@@ -21,6 +21,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- ZXing Barcode Scanner Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.0/umd/index.min.js"></script>
 
   <style>
     :root {
@@ -1404,20 +1406,67 @@
 
     async function toggleBarcodeCamera() {
       const box = document.getElementById('barcode-camera-box');
-      if (!box.classList.contains('hidden')) { stopBarcodeCamera(); return; }
+      if (!box.classList.contains('hidden')) { 
+        stopBarcodeCamera(); 
+        return; 
+      }
       try {
-        barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        const video = document.getElementById('barcode-video');
-        video.srcObject = barcodeStream;
         box.classList.remove('hidden');
         document.getElementById('btn-toggle-camera').textContent = 'Fechar Câmera';
-      } catch {
-        showToast('Não foi possível acessar a câmera.', true);
+
+        // Usando ZXing Browser Code Reader para leitura automática ultra precisa
+        if (window.ZXing) {
+          window.codeReader = new ZXing.BrowserMultiFormatReader();
+          const videoInputDevices = await window.codeReader.listVideoInputDevices();
+          const selectedDeviceId = videoInputDevices.length > 0 ? videoInputDevices[videoInputDevices.length - 1].deviceId : undefined;
+
+          window.codeReader.decodeFromVideoDevice(selectedDeviceId, 'barcode-video', (result, err) => {
+            if (result) {
+              const scannedCode = result.getText();
+              document.getElementById('prod-sku').value = scannedCode;
+              showToast(`Código EAN escaneado: ${scannedCode}`);
+              stopBarcodeCamera();
+              lookupBarcodeOnline();
+            }
+          });
+        } else {
+          // Fallback para BarcodeDetector nativo se ZXing falhar
+          barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          const video = document.getElementById('barcode-video');
+          video.srcObject = barcodeStream;
+
+          if ('BarcodeDetector' in window) {
+            const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'qr_code'] });
+            barcodeInterval = setInterval(async () => {
+              try {
+                const codes = await detector.detect(video);
+                if (codes.length > 0) {
+                  const scannedCode = codes[0].rawValue;
+                  document.getElementById('prod-sku').value = scannedCode;
+                  showToast(`Código EAN escaneado: ${scannedCode}`);
+                  stopBarcodeCamera();
+                  lookupBarcodeOnline();
+                }
+              } catch {}
+            }, 300);
+          }
+        }
+      } catch (e) {
+        showToast('Não foi possível acessar a câmera ou iniciar o leitor.', true);
+        stopBarcodeCamera();
       }
     }
 
     function stopBarcodeCamera() {
-      if (barcodeStream) { barcodeStream.getTracks().forEach(t => t.stop()); barcodeStream = null; }
+      clearInterval(barcodeInterval);
+      if (window.codeReader) {
+        try { window.codeReader.reset(); } catch {}
+        window.codeReader = null;
+      }
+      if (barcodeStream) {
+        barcodeStream.getTracks().forEach(t => t.stop());
+        barcodeStream = null;
+      }
       document.getElementById('barcode-camera-box')?.classList.add('hidden');
       const btn = document.getElementById('btn-toggle-camera');
       if (btn) btn.textContent = 'Ler com Câmera';
