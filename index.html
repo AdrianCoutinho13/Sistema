@@ -629,7 +629,7 @@
                     <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 p-4 rounded-xl border border-slate-800 text-xs">
                         <div>
                             <p class="font-semibold text-white">Exigir Tela de Login ao Abrir o Site</p>
-                            <p class="text-[11px] text-slate-400">Ative após criar seu usuário no Supabase Authentication</p>
+                            <p class="text-[11px] text-slate-400">Ao salvar com esta opção ativa, a tela de login abrirá imediatamente para validar seu acesso</p>
                         </div>
                         <label class="inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="db-require-login" class="sr-only peer">
@@ -639,7 +639,10 @@
 
                     <div class="flex flex-wrap gap-2">
                         <button type="button" onclick="saveDbConfig()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold cursor-pointer">
-                            <i class="fa-solid fa-plug mr-1.5"></i> Conectar & Sincronizar Agora
+                            <i class="fa-solid fa-plug mr-1.5"></i> Conectar & Ativar Login Agora
+                        </button>
+                        <button type="button" onclick="openCloudLoginScreen()" class="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold cursor-pointer">
+                            <i class="fa-solid fa-lock mr-1.5"></i> Testar Tela de Login
                         </button>
                         <button type="button" onclick="pushLocalToCloud()" class="px-4 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold cursor-pointer">
                             <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> Enviar Dados Locais para Nuvem
@@ -2632,13 +2635,19 @@ create policy "Acesso Autenticado ERP" on erp_store_state
         // ==========================================
         // DATABASE & DASHBOARD ANALYTICS
         // ==========================================
+        // Opcional: Cole aqui sua URL e Chave Anon do Supabase para já ir embutido no deploy do Vercel/GitHub:
+        const DEFAULT_SUPABASE_URL = '';
+        const DEFAULT_SUPABASE_KEY = '';
+        const DEFAULT_REQUIRE_LOGIN = false;
+
         let supabaseClient = null;
         let isCloudSyncing = false;
 
         function initSupabaseClient() {
-            const url = (localStorage.getItem('eletro_v4_db_url') || '').trim();
-            const key = (localStorage.getItem('eletro_v4_db_key') || '').trim();
-            const reqLogin = localStorage.getItem('eletro_v4_require_login') === 'true';
+            const url = (localStorage.getItem('eletro_v4_db_url') || DEFAULT_SUPABASE_URL || '').trim();
+            const key = (localStorage.getItem('eletro_v4_db_key') || DEFAULT_SUPABASE_KEY || '').trim();
+            const savedReq = localStorage.getItem('eletro_v4_require_login');
+            const reqLogin = savedReq !== null ? savedReq === 'true' : DEFAULT_REQUIRE_LOGIN;
 
             const urlInp = document.getElementById('db-url');
             const keyInp = document.getElementById('db-anon-key');
@@ -2679,11 +2688,16 @@ create policy "Acesso Autenticado ERP" on erp_store_state
 
         async function checkCloudAuthAndSync() {
             const hasClient = initSupabaseClient();
-            const reqLogin = localStorage.getItem('eletro_v4_require_login') === 'true';
+            const savedReq = localStorage.getItem('eletro_v4_require_login');
+            const reqLogin = savedReq !== null ? savedReq === 'true' : DEFAULT_REQUIRE_LOGIN;
             const loginScreen = document.getElementById('cloud-login-screen');
             const loginTitle = document.getElementById('login-store-title');
             if (loginTitle) loginTitle.innerText = `${storeName} • Acesso Nuvem`;
 
+            if (reqLogin && !hasClient) {
+                if (loginScreen) loginScreen.classList.remove('hidden');
+                return;
+            }
             if (!hasClient) return;
 
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -2696,6 +2710,12 @@ create policy "Acesso Autenticado ERP" on erp_store_state
                 await pullStateFromSupabase();
                 subscribeToRealtimeChanges();
             }
+        }
+
+        function openCloudLoginScreen() {
+            const loginTitle = document.getElementById('login-store-title');
+            if (loginTitle) loginTitle.innerText = `${storeName} • Acesso Nuvem`;
+            document.getElementById('cloud-login-screen')?.classList.remove('hidden');
         }
 
         function applyLoggedUserRole(user) {
@@ -2837,11 +2857,22 @@ create policy "Acesso Autenticado ERP" on erp_store_state
             const key = (document.getElementById('db-anon-key')?.value || '').trim();
             const reqLogin = document.getElementById('db-require-login')?.checked || false;
 
+            if (reqLogin && (!url || !key)) {
+                showToast('Preencha a Project URL e a Anon API Key do Supabase antes de ativar o login.', true);
+                return;
+            }
+
             localStorage.setItem('eletro_v4_db_url', url);
             localStorage.setItem('eletro_v4_db_key', key);
             localStorage.setItem('eletro_v4_require_login', reqLogin ? 'true' : 'false');
 
             if (initSupabaseClient()) {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (reqLogin && !session) {
+                    openCloudLoginScreen();
+                    showToast('Login em nuvem ativado! Faça login com seu e-mail e senha.');
+                    return;
+                }
                 await pullStateFromSupabase();
                 subscribeToRealtimeChanges();
                 showToast('Conectado ao Supabase Cloud com sucesso!');
