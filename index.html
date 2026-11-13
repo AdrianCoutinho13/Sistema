@@ -325,6 +325,8 @@
     </aside>
 
     <main class="flex-1 p-4 lg:p-6 overflow-y-auto space-y-6">
+
+      <!-- ==================== VIEW 1: PAINEL EXECUTIVO ==================== -->
       <section id="view-dashboard" class="view-section space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -398,50 +400,1383 @@
             <div class="h-64"><canvas id="categoryChart"></canvas></div>
           </div>
         </div>
+
+        <div class="erp-card p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white">Atividade Recente do Sistema</h3>
+            <button onclick="navigateTo('financeiro')" class="text-xs font-semibold text-sky-400 hover:underline">Ver tudo &rarr;</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 uppercase text-[11px]">
+                  <th class="py-2.5 px-3">DATA / HORA</th>
+                  <th class="py-2.5 px-3">DESCRIÇÃO</th>
+                  <th class="py-2.5 px-3">PAGAMENTO / TIPO</th>
+                  <th class="py-2.5 px-3 text-right">VALOR</th>
+                </tr>
+              </thead>
+              <tbody id="recent-activity-body" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
+      <!-- ==================== VIEW 2: ESTOQUE ==================== -->
       <section id="view-estoque" class="view-section hidden space-y-6">
-        <div class="flex justify-between items-center">
-          <h2 class="text-2xl font-extrabold text-white">Almoxarifado & Estoque</h2>
-          <button onclick="openProductModal()" class="btn-accent px-4 py-2 text-xs font-bold">+ Cadastrar Produto</button>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-2xl font-extrabold text-white">Almoxarifado & Estoque</h2>
+            <p class="text-xs text-slate-400">Cadastro completo de mercadorias, leitura de código de barras EAN e controle de saldo.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="openProductModal(); setTimeout(() => toggleBarcodeCamera(), 150);" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-amber-300 flex items-center gap-1.5 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h2v16H3V4zm4 0h1v16H7V4zm3 0h2v16h-2V4zm4 0h1v16h-1V4zm3 0h2v16h-2V4z"/></svg>
+              <span>Bipar EAN</span>
+            </button>
+            <button type="button" onclick="openProductModal()" class="btn-accent px-4 py-2 text-xs font-bold">+ Cadastrar Produto</button>
+          </div>
         </div>
+
+        <div class="erp-card p-4">
+          <input type="text" id="stock-search-input" oninput="renderProductsTable()" placeholder="Buscar item por nome, código de barras EAN ou grupo..." class="erp-input w-full px-3.5 py-2.5 text-xs" />
+        </div>
+
         <div class="erp-card overflow-hidden">
-          <table class="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr class="border-b border-slate-800 text-slate-400 uppercase text-[11px]">
-                <th class="py-3 px-3">EAN</th>
-                <th class="py-3 px-3">PRODUTO</th>
-                <th class="py-3 px-3">GRUPO</th>
-                <th class="py-3 px-3 text-right">PREÇO</th>
-                <th class="py-3 px-3 text-center">SALDO</th>
-              </tr>
-            </thead>
-            <tbody id="products-table-body" class="divide-y divide-slate-800/70"></tbody>
-          </table>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 uppercase text-[11px]">
+                  <th class="py-3 px-3">CÓDIGO / EAN</th>
+                  <th class="py-3 px-3">PRODUTO</th>
+                  <th class="py-3 px-3">GRUPO</th>
+                  <th class="py-3 px-3 text-right">PREÇO VENDA</th>
+                  <th class="py-3 px-3 text-center">SALDO</th>
+                  <th class="py-3 px-3 text-right">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody id="products-table-body" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
+      <!-- ==================== VIEW 3: FINANCEIRO ==================== -->
       <section id="view-financeiro" class="view-section hidden space-y-6">
-        <h2 class="text-2xl font-extrabold text-white">Caixa & Financeiro</h2>
+        <div>
+          <h2 class="text-2xl font-extrabold text-white">Caixa & Financeiro</h2>
+          <p class="text-xs text-slate-400">Controle de saldo inicial, entradas operacionais, sangrias e despesas.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div id="initial-cash-card" class="erp-card p-4">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">SALDO INICIAL DE CAIXA (R$)</label>
+            <div class="flex gap-2">
+              <input type="text" id="initial-cash-input" value="2500,00" class="erp-input w-full px-3 py-2 text-sm font-bold" />
+              <button onclick="updateInitialCash()" class="btn-accent px-4 py-2 text-xs shrink-0">Salvar</button>
+            </div>
+          </div>
+
+          <div class="erp-card p-4">
+            <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">TOTAL ENTRADAS</span>
+            <div id="fin-total-in" class="text-2xl font-extrabold text-emerald-400">R$ 420,00</div>
+          </div>
+
+          <div class="erp-card p-4">
+            <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">TOTAL SAÍDAS</span>
+            <div id="fin-total-out" class="text-2xl font-extrabold text-red-400">R$ 85,00</div>
+          </div>
+
+          <div class="erp-card p-4">
+            <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">SALDO CONSOLIDADO</span>
+            <div id="fin-final-balance" class="text-2xl font-extrabold text-white">R$ 2.835,00</div>
+          </div>
+        </div>
+
+        <div class="erp-card p-5 space-y-3">
+          <h3 class="text-sm font-bold text-white">Registrar Movimentação Manual</h3>
+          <form onsubmit="addCashTransaction(event)" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            <div class="md:col-span-2">
+              <label class="block text-[11px] text-slate-400 mb-1">Tipo</label>
+              <select id="tx-type" class="erp-input w-full px-3 py-2.5 text-xs">
+                <option value="entrada">Entrada (+)</option>
+                <option value="saida">Saída (-)</option>
+              </select>
+            </div>
+            <div class="md:col-span-5">
+              <label class="block text-[11px] text-slate-400 mb-1">Descrição *</label>
+              <input type="text" id="tx-desc" required placeholder="Ex: Pagamento Fornecedor / Aporte" class="erp-input w-full px-3 py-2.5 text-xs" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-[11px] text-slate-400 mb-1">Forma / Categoria</label>
+              <select id="tx-method" class="erp-input w-full px-3 py-2.5 text-xs">
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Pix">Pix</option>
+                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                <option value="Cartão de Débito">Cartão de Débito</option>
+              </select>
+            </div>
+            <div class="md:col-span-3">
+              <label class="block text-[11px] text-slate-400 mb-1">Valor (R$) *</label>
+              <div class="flex gap-2">
+                <input type="number" step="0.01" min="0.01" id="tx-amount" required placeholder="150.00" class="erp-input w-full px-3 py-2.5 text-xs" />
+                <button type="submit" class="btn-accent px-4 py-2.5 text-xs shrink-0">Lançar</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="erp-card p-5 space-y-3">
+          <h3 class="text-sm font-bold text-white">Livro Caixa & Movimentações</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 uppercase text-[11px]">
+                  <th class="py-3 px-3">DATA</th>
+                  <th class="py-3 px-3">TIPO</th>
+                  <th class="py-3 px-3">DESCRIÇÃO</th>
+                  <th class="py-3 px-3">FORMA</th>
+                  <th class="py-3 px-3 text-right">VALOR</th>
+                  <th class="py-3 px-3 text-right">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody id="transactions-table-body" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+        </div>
       </section>
-      <section id="view-vendas" class="view-section hidden space-y-6"><h2 class="text-2xl font-extrabold text-white">Vendas & PDV</h2></section>
-      <section id="view-relatorios" class="view-section hidden space-y-6"><h2 class="text-2xl font-extrabold text-white">Relatórios</h2></section>
-      <section id="view-entidades" class="view-section hidden space-y-6"><h2 class="text-2xl font-extrabold text-white">Clientes & Fornecedores</h2></section>
-      <section id="view-custos" class="view-section hidden space-y-6"><h2 class="text-2xl font-extrabold text-white">Orçamento & Custos</h2></section>
-      <section id="view-equipe" class="view-section hidden space-y-6"><h2 class="text-2xl font-extrabold text-white">Equipe</h2></section>
-      <section id="view-database" class="view-section hidden space-y-6"><h2 class="text-2xl font-extrabold text-white">Database</h2></section>
+
+      <!-- ==================== VIEW 4: VENDAS & PDV ==================== -->
+      <section id="view-vendas" class="view-section hidden space-y-6">
+        <div>
+          <h2 class="text-2xl font-extrabold text-white">Vendas & Ponto de Venda (PDV)</h2>
+          <p class="text-xs text-slate-400">Busca instantânea de itens, múltiplas formas de pagamento e emissão de orçamento em PDF.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div class="lg:col-span-8 erp-card p-5 space-y-4">
+            <div class="flex flex-col sm:flex-row gap-2.5">
+              <input type="text" id="pdv-search-input" oninput="renderPDVGrid()" placeholder="Buscar produto por nome ou código SKU/EAN..." class="erp-input w-full px-3.5 py-2.5 text-xs" />
+              <button type="button" onclick="openBarcodeQuickScanPDV()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-amber-300 flex items-center justify-center gap-2 shrink-0 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h2v16H3V4zm4 0h1v16H7V4zm3 0h2v16h-2V4zm4 0h1v16h-1V4zm3 0h2v16h-2V4z"/></svg>
+                <span>Bipar Código</span>
+              </button>
+            </div>
+
+            <div id="pdv-products-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+          </div>
+
+          <div class="lg:col-span-4 erp-card p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 class="text-sm font-extrabold text-white">Carrinho de Venda</h3>
+              <button type="button" onclick="clearPDVCart()" class="text-xs font-semibold text-red-400 hover:underline">Limpar</button>
+            </div>
+
+            <div>
+              <label class="block text-xs text-slate-400 mb-1.5">Cliente (Opcional / Orçamento)</label>
+              <select id="pdv-customer-select" class="erp-input w-full px-3 py-2 text-xs">
+                <option value="Consumidor Final">Consumidor Final</option>
+              </select>
+            </div>
+
+            <div id="pdv-cart-items" class="min-h-[140px] max-h-64 overflow-y-auto divide-y divide-slate-800/80 border-y border-slate-800/80 py-2">
+              <p class="text-xs text-slate-500 text-center py-10">Nenhum item adicionado ao carrinho.</p>
+            </div>
+
+            <div>
+              <label class="block text-xs text-slate-400 mb-1.5">Forma de Pagamento</label>
+              <select id="pdv-payment-select" class="erp-input w-full px-3 py-2 text-xs">
+                <option value="Pix">Pix</option>
+                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                <option value="Cartão de Débito">Cartão de Débito</option>
+                <option value="Dinheiro">Dinheiro</option>
+              </select>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-400">Total a Pagar</span>
+              <span id="pdv-cart-total" class="text-xl font-extrabold text-white">R$ 0,00</span>
+            </div>
+
+            <div class="space-y-2">
+              <button type="button" onclick="completePDVSale()" class="btn-accent w-full py-2.5 text-xs font-bold shadow-lg">Finalizar Venda</button>
+              <button type="button" onclick="generatePDVQuotePDF()" class="w-full py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center gap-2 transition">
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <span>Gerar PDF de Orçamento</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 5: RELATÓRIOS ==================== -->
+      <section id="view-relatorios" class="view-section hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-extrabold text-white">Relatório Gerencial & Fechamento de Caixa</h2>
+            <p class="text-xs text-slate-400">Resumo por forma de pagamento, entradas/saídas e impressão formatada em PDF</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="report-period-select" onchange="renderSalesReport()" class="erp-input px-3 py-2 text-xs">
+              <option value="today">Hoje</option>
+              <option value="7days">Últimos 7 dias</option>
+              <option value="30days">Últimos 30 dias</option>
+              <option value="all" selected>Todo o Período</option>
+            </select>
+            <button onclick="printSalesReportPDF()" class="btn-accent px-4 py-2 text-xs font-bold flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+              <span>Gerar PDF Fechamento + Assinaturas</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="report-payment-cards"></div>
+      </section>
+
+      <!-- ==================== VIEW 6: ENTIDADES ==================== -->
+      <section id="view-entidades" class="view-section hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-extrabold text-white">Clientes & Fornecedores</h2>
+            <p class="text-xs text-slate-400">Base unificada de parceiros comerciais</p>
+          </div>
+        </div>
+
+        <div class="erp-card p-5">
+          <form onsubmit="addEntity(event)" class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+            <select id="entity-type" class="erp-input px-3 py-2 text-xs">
+              <option value="Cliente">Cliente</option>
+              <option value="Fornecedor">Fornecedor</option>
+            </select>
+            <input type="text" id="entity-name" required placeholder="Nome / Razão Social" class="erp-input px-3 py-2 text-xs sm:col-span-2" />
+            <input type="text" id="entity-doc" placeholder="CPF / CNPJ" class="erp-input px-3 py-2 text-xs" />
+            <div class="flex gap-2">
+              <input type="text" id="entity-phone" placeholder="Telefone / WhatsApp" class="erp-input w-full px-3 py-2 text-xs" />
+              <button type="submit" class="btn-accent px-4 py-2 text-xs shrink-0">Salvar</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="erp-card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 uppercase text-[11px]">
+                  <th class="py-3 px-3">Tipo</th>
+                  <th class="py-3 px-3">Nome / Razão Social</th>
+                  <th class="py-3 px-3">CPF / CNPJ</th>
+                  <th class="py-3 px-3">Contato</th>
+                  <th class="py-3 px-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="entities-table-body" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 7: CUSTOS ==================== -->
+      <section id="view-custos" class="view-section hidden space-y-6">
+        <div>
+          <h2 class="text-xl font-extrabold text-white">Orçamento & Centros de Custo</h2>
+          <p class="text-xs text-slate-400">Planejamento de despesas fixas e variáveis da operação</p>
+        </div>
+
+        <div class="erp-card p-5">
+          <form onsubmit="addCost(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <input type="text" id="cost-desc" required placeholder="Centro de Custo (ex.: Aluguel, Energia, Internet)" class="erp-input px-3 py-2 text-xs sm:col-span-2" />
+            <input type="number" step="0.01" id="cost-budget" required placeholder="Orçado (R$)" class="erp-input px-3 py-2 text-xs" />
+            <div class="flex gap-2">
+              <input type="number" step="0.01" id="cost-actual" required placeholder="Realizado (R$)" class="erp-input w-full px-3 py-2 text-xs" />
+              <button type="submit" class="btn-accent px-4 py-2 text-xs shrink-0">Adicionar</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="erp-card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 uppercase text-[11px]">
+                  <th class="py-3 px-3">Descrição</th>
+                  <th class="py-3 px-3 text-right">Orçado</th>
+                  <th class="py-3 px-3 text-right">Realizado</th>
+                  <th class="py-3 px-3 text-right">Saldo</th>
+                  <th class="py-3 px-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="costs-table-body" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 8: EQUIPE ==================== -->
+      <section id="view-equipe" class="view-section hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-extrabold text-white">Perfis & Controle de Equipe (Supabase)</h2>
+            <p class="text-xs text-slate-400">Usuários sincronizados diretamente da tabela <code class="text-sky-400">erp_team_users</code> do seu Supabase</p>
+          </div>
+          <button onclick="syncTeamFromSupabase()" class="btn-accent px-4 py-2 text-xs font-bold">↻ Atualizar Lista do Supabase</button>
+        </div>
+
+        <div class="erp-card p-5 border border-sky-500/30">
+          <h3 class="text-sm font-bold text-white mb-1">Gerenciamento Centralizado de Acessos</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Para máxima segurança, a criação de novos logins, senhas e definição do cargo (<strong class="text-sky-400">Master Admin</strong> ou <strong class="text-slate-200">Gerente / Operador de Caixa</strong>) é controlada exclusivamente por você dentro do painel <strong class="text-white">Supabase → Table Editor → erp_team_users</strong>.
+          </p>
+        </div>
+
+        <div class="erp-card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 uppercase text-[11px]">
+                  <th class="py-3 px-3">Usuário (Login)</th>
+                  <th class="py-3 px-3">E-mail</th>
+                  <th class="py-3 px-3">Cargo / Permissão</th>
+                  <th class="py-3 px-3">Status</th>
+                </tr>
+              </thead>
+              <tbody id="team-table-body" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 9: DATABASE ==================== -->
+      <section id="view-database" class="view-section hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-extrabold text-white">Conexão Database & Nuvem (Supabase)</h2>
+            <p class="text-xs text-slate-400">Sincronização automática em tempo real entre a loja e o seu painel administrativo</p>
+          </div>
+          <span id="db-badge-status" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Conectado ao Supabase</span>
+        </div>
+
+        <div class="erp-card p-5 space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Project URL (Supabase)</label>
+              <input type="text" id="sb-url-input" class="erp-input w-full px-3.5 py-2.5 text-xs font-mono" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Publishable API Key (Supabase)</label>
+              <input type="password" id="sb-key-input" class="erp-input w-full px-3.5 py-2.5 text-xs font-mono" />
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-3 pt-2">
+            <button onclick="saveAndTestSupabase()" class="btn-accent px-4 py-2 text-xs font-bold">Salvar & Testar Conexão</button>
+            <button onclick="pushStateToSupabase(true)" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition">Enviar Dados para Nuvem</button>
+            <button onclick="pullStateFromSupabase(true)" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white transition">Baixar Dados da Nuvem</button>
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
 
+  <!-- ==================== MODAL: PRODUTO ==================== -->
+  <div id="modal-produto" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="w-full max-w-lg erp-card p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 id="product-modal-title" class="text-base font-extrabold text-white">Cadastrar Produto</h3>
+        <button onclick="closeProductModal()" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-sky-400">Leitor de Código de Barras (EAN / GTIN)</span>
+          <button type="button" onclick="toggleBarcodeCamera()" id="btn-toggle-camera" class="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 text-[11px] font-semibold">Ler com Câmera</button>
+        </div>
+        <div id="barcode-camera-box" class="hidden rounded-xl overflow-hidden bg-black border border-slate-700">
+          <video id="barcode-video" class="w-full h-40 object-cover" autoplay playsinline></video>
+        </div>
+        <div class="flex gap-2">
+          <input type="text" id="prod-sku" placeholder="Bipe ou digite o código EAN (ex.: 7891000100103)" class="erp-input w-full px-3 py-2 text-xs font-mono" />
+          <button type="button" onclick="lookupBarcodeOnline()" class="btn-accent px-3 py-2 text-xs shrink-0">Buscar</button>
+        </div>
+      </div>
+
+      <form onsubmit="saveProduct(event)" class="space-y-3">
+        <input type="hidden" id="prod-id" />
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Produto</label>
+          <input type="text" id="prod-name" required placeholder="Ex.: Cabo HDMI 2.1 Ultra HD 2m" class="erp-input w-full px-3 py-2 text-xs" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Grupo / Categoria</label>
+            <input type="text" id="prod-group" required placeholder="Ex.: Acessórios, Cabos" class="erp-input w-full px-3 py-2 text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Quantidade em Estoque</label>
+            <input type="number" id="prod-stock" required min="0" value="10" class="erp-input w-full px-3 py-2 text-xs" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Preço de Custo (R$)</label>
+            <input type="number" step="0.01" id="prod-cost" value="0" class="erp-input w-full px-3 py-2 text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Preço de Venda (R$)</label>
+            <input type="number" step="0.01" id="prod-price" required placeholder="0,00" class="erp-input w-full px-3 py-2 text-xs font-bold" />
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeProductModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300">Cancelar</button>
+          <button type="submit" class="btn-accent px-5 py-2 text-xs font-bold">Salvar Produto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: EDITAR TRANSAÇÃO ==================== -->
+  <div id="modal-edit-tx" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="w-full max-w-md erp-card p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-extrabold text-white">Editar Lançamento do Caixa</h3>
+        <button onclick="closeModal('modal-edit-tx')" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <form onsubmit="saveEditedTransaction(event)" class="space-y-3">
+        <input type="hidden" id="edit-tx-id" />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Tipo</label>
+            <select id="edit-tx-type" class="erp-input w-full px-3 py-2 text-xs">
+              <option value="entrada">Entrada (+)</option>
+              <option value="saida">Saída (-)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Forma / Categoria</label>
+            <select id="edit-tx-method" class="erp-input w-full px-3 py-2 text-xs">
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Pix">Pix</option>
+              <option value="Cartão de Crédito">Cartão de Crédito</option>
+              <option value="Cartão de Débito">Cartão de Débito</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Descrição *</label>
+          <input type="text" id="edit-tx-desc" required class="erp-input w-full px-3 py-2 text-xs" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Valor (R$) *</label>
+          <input type="number" step="0.01" min="0.01" id="edit-tx-amount" required class="erp-input w-full px-3 py-2 text-xs font-bold" />
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeModal('modal-edit-tx')" class="px-4 py-2 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300">Cancelar</button>
+          <button type="submit" class="btn-accent px-5 py-2 text-xs font-bold">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-box" class="fixed bottom-4 right-4 z-50 hidden max-w-sm erp-card px-4 py-3 border border-slate-700 shadow-2xl text-xs font-semibold text-white"></div>
+
+  <!-- ==================== SCRIPTS DO SISTEMA ==================== -->
   <script>
+    const DEFAULT_SUPABASE_URL = 'https://tqesectxexzrpkcvkxci.supabase.co';
+    const DEFAULT_SUPABASE_KEY = 'sb_publishable_3dzaLAHXwZ2fnK1dlywflg_a6FcwH_b';
+    const STORAGE_KEY = 'eletroshop_erp_state_v4';
+    const AUTH_SESSION_KEY = 'eletroshop_auth_session_v4';
+    const SB_CREDS_KEY = 'eletroshop_sb_creds_v4';
+
+    const NICHE_ICONS = [
+      { id: 'eletrica', label: 'Elétrica', svg: '<path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>' },
+      { id: 'pastel', label: 'Pastel/Lanche', svg: '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>' },
+      { id: 'cafe', label: 'Café/Padaria', svg: '<path stroke-linecap="round" stroke-linejoin="round" d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zm4-4h8"/>' },
+      { id: 'ferramentas', label: 'Ferramentas', svg: '<path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/>' },
+      { id: 'moda', label: 'Moda', svg: '<path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>' },
+      { id: 'pet', label: 'Pet Shop', svg: '<path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>' },
+      { id: 'beleza', label: 'Beleza', svg: '<path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>' },
+      { id: 'mercado', label: 'Mercado', svg: '<path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>' },
+      { id: 'eletronicos', label: 'Eletrônicos', svg: '<path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>' },
+      { id: 'autopecas', label: 'Auto Peças', svg: '<circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 3"/>' },
+      { id: 'farmacia', label: 'Farmácia', svg: '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>' },
+      { id: 'comercio', label: 'Comércio Geral', svg: '<path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>' }
+    ];
+
+    const THEME_PALETTES = [
+      { id: 'blue', name: 'Azul Noturno', primary: '#3b82f6', hover: '#2563eb' },
+      { id: 'gold', name: 'Grafite & Ouro', primary: '#eab308', hover: '#ca8a04' },
+      { id: 'emerald', name: 'Verde Floresta', primary: '#10b981', hover: '#059669' },
+      { id: 'violet', name: 'Roxo Ametista', primary: '#8b5cf6', hover: '#7c3aed' },
+      { id: 'rose', name: 'Rubi Escuro', primary: '#f43f5e', hover: '#e11d48' },
+      { id: 'cyan', name: 'Oceano Profundo', primary: '#06b6d4', hover: '#0891b2' }
+    ];
+
+    let supabaseClient = null;
+    let currentUser = null;
+    let cartItems = [];
+    let selectedNicheIconId = 'eletrica';
+    let selectedPaletteId = 'blue';
+    let cashflowChartInstance = null;
+    let categoryChartInstance = null;
+    let barcodeStream = null;
+    let barcodeInterval = null;
+
+    let appState = {
+      store: { name: 'Eletro Shop', iconId: 'eletrica', badgeColor: '#3b82f6', paletteId: 'blue' },
+      initialCash: 2500.00,
+      products: [
+        { id: 'PRD-01', sku: '7891001001', name: 'Disjuntor DIN Bipolar 32A Curva C', group: 'Elétrica & Automação', stock: 48, cost: 24.00, price: 42.90 },
+        { id: 'PRD-02', sku: '7891001002', name: 'Cabo Flexível 2,5mm² Rolo 100m Preto', group: 'Cabos & Fios', stock: 22, cost: 118.00, price: 189.00 },
+        { id: 'PRD-03', sku: '7891001003', name: 'Refletor LED Holofote 100W IP66', group: 'Iluminação LED', stock: 35, cost: 46.00, price: 79.90 },
+        { id: 'PRD-04', sku: '7891001004', name: 'Multímetro Digital Profissional True RMS', group: 'Ferramentas', stock: 14, cost: 98.00, price: 165.00 }
+      ],
+      sales: [
+        { id: 'VND-1001', date: '12/11/2026, 22:59:21', customer: 'Consumidor Final', payment: 'Pix', items: [{ id: 'PRD-02', name: 'Cabo Flexível 2,5mm² Rolo 100m Preto', price: 189.00, qty: 2 }], total: 378.00 }
+      ],
+      transactions: [
+        { id: 'TX-01', date: '12/11/2026, 22:59:21', type: 'entrada', desc: 'Venda Balcão #1001', method: 'Pix', amount: 378.00 }
+      ],
+      entities: [
+        { id: 'ENT-01', type: 'Cliente', name: 'Consumidor Final', doc: '-', phone: '-' }
+      ],
+      costs: [
+        { id: 'CST-01', desc: 'Energia Elétrica & Internet', budget: 450.00, actual: 410.00 }
+      ],
+      team: []
+    };
+
+    function formatBRL(value) {
+      return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function showToast(msg, isError = false) {
+      const box = document.getElementById('toast-box');
+      if (!box) return;
+      box.textContent = msg;
+      box.className = `fixed bottom-4 right-4 z-50 max-w-sm erp-card px-4 py-3 border shadow-2xl text-xs font-semibold text-white ${isError ? 'border-red-500/60 bg-red-950/90' : 'border-emerald-500/50 bg-slate-900/95'}`;
+      box.classList.remove('hidden');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => box.classList.add('hidden'), 3800);
+    }
+
+    function openModal(id) { document.getElementById(id)?.classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
+
+    function isMasterAdmin() {
+      return currentUser && String(currentUser.role || '').trim() === 'Master Admin';
+    }
+
+    function isManagerOrMaster() {
+      if (!currentUser) return false;
+      const role = String(currentUser.role || '').trim().toLowerCase();
+      return role === 'master admin' || role === 'gerente' || role === 'gerente de loja';
+    }
+
+    function getSupabaseCreds() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(SB_CREDS_KEY) || '{}');
+        return { url: saved.url || DEFAULT_SUPABASE_URL, key: saved.key || DEFAULT_SUPABASE_KEY };
+      } catch {
+        return { url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_KEY };
+      }
+    }
+
+    function initSupabaseClient() {
+      const creds = getSupabaseCreds();
+      const urlInput = document.getElementById('sb-url-input');
+      const keyInput = document.getElementById('sb-key-input');
+      if (urlInput) urlInput.value = creds.url;
+      if (keyInput) keyInput.value = creds.key;
+
+      if (window.supabase && creds.url && creds.key) {
+        supabaseClient = window.supabase.createClient(creds.url, creds.key);
+      }
+    }
+
+    function loadLocalState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) appState = { ...appState, ...JSON.parse(raw) };
+      } catch (e) { console.warn(e); }
+    }
+
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); } catch (e) { console.warn(e); }
+      pushStateToSupabase(false);
+    }
+
+    async function pushStateToSupabase(notify = false) {
+      if (!supabaseClient) return;
+      try {
+        const { error } = await supabaseClient.from('erp_store_state').upsert({
+          id: 'main_store', payload: appState, updated_at: new Date().toISOString()
+        });
+        if (error) throw error;
+        updateDbStatusUI(true);
+        if (notify) showToast('Dados sincronizados com a nuvem Supabase!');
+      } catch (err) {
+        updateDbStatusUI(false);
+        if (notify) showToast('Erro ao enviar para Supabase: ' + err.message, true);
+      }
+    }
+
+    async function pullStateFromSupabase(notify = false) {
+      if (!supabaseClient) return;
+      try {
+        const { data, error } = await supabaseClient.from('erp_store_state').select('payload').eq('id', 'main_store').maybeSingle();
+        if (error) throw error;
+        if (data && data.payload) {
+          appState = { ...appState, ...data.payload };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+          applyStoreIdentity();
+          renderAllViews();
+        }
+        updateDbStatusUI(true);
+        if (notify) showToast('Dados atualizados da nuvem Supabase!');
+      } catch (err) {
+        updateDbStatusUI(false);
+        if (notify) showToast('Erro ao baixar do Supabase: ' + err.message, true);
+      }
+    }
+
+    function updateDbStatusUI(online) {
+      const dot = document.getElementById('header-db-dot');
+      const text = document.getElementById('header-db-text');
+      const badge = document.getElementById('db-badge-status');
+      if (dot) dot.className = `w-2 h-2 rounded-full ${online ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`;
+      if (text) text.textContent = online ? 'Supabase Online' : 'Offline / Verificar';
+      if (badge) {
+        badge.textContent = online ? 'Conectado ao Supabase' : 'Falha na Conexão';
+        badge.className = `px-3 py-1 rounded-full text-xs font-bold border ${online ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-red-500/15 text-red-400 border-red-500/30'}`;
+      }
+    }
+
+    async function pingSupabaseNow() { await pullStateFromSupabase(true); }
+
+    async function saveAndTestSupabase() {
+      if (!isMasterAdmin()) return showToast('Apenas o Master Admin pode alterar a conexão.', true);
+      const url = document.getElementById('sb-url-input').value.trim();
+      const key = document.getElementById('sb-key-input').value.trim();
+      localStorage.setItem(SB_CREDS_KEY, JSON.stringify({ url, key }));
+      initSupabaseClient();
+      await pullStateFromSupabase(true);
+    }
+
+    async function handleCloudLogin(event) {
+      event.preventDefault();
+      const loginInput = document.getElementById('login-username').value.trim();
+      const passInput = document.getElementById('login-password').value.trim();
+      const errBox = document.getElementById('login-error-box');
+      const btn = document.getElementById('login-submit-btn');
+
+      errBox.classList.add('hidden');
+      if (!supabaseClient) initSupabaseClient();
+      if (!supabaseClient) {
+        errBox.textContent = 'Cliente Supabase não inicializado.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Verificando...';
+
+      try {
+        const { data: users, error } = await supabaseClient.from('erp_team_users').select('*');
+        if (error) throw new Error(error.message);
+
+        if (!users || users.length === 0) {
+          errBox.innerHTML = 'Nenhum usuário cadastrado na tabela <strong>erp_team_users</strong>.';
+          errBox.classList.remove('hidden');
+          return;
+        }
+
+        const matched = users.find(u => {
+          const uName = String(u.username || '').trim().toLowerCase();
+          const uEmail = String(u.email || '').trim().toLowerCase();
+          const uPass = String(u.password || '').trim();
+          const typed = loginInput.toLowerCase();
+          return (uName === typed || uEmail === typed) && uPass === passInput;
+        });
+
+        if (!matched) {
+          errBox.textContent = 'Acesso negado: Usuário ou senha incorretos.';
+          errBox.classList.remove('hidden');
+          return;
+        }
+
+        currentUser = {
+          id: matched.id,
+          name: matched.username,
+          email: matched.email || `${matched.username.toLowerCase()}@loja.local`,
+          role: matched.role || 'Operador de Caixa'
+        };
+
+        sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(currentUser));
+        applyAuthenticatedSession();
+        await pullStateFromSupabase(false);
+        showToast(`Bem-vindo(a), ${currentUser.name}!`);
+      } catch (err) {
+        errBox.textContent = err.message || 'Erro ao autenticar.';
+        errBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Entrar no Sistema';
+      }
+    }
+
+    function applyAuthenticatedSession() {
+      if (!currentUser) return;
+      document.getElementById('cloud-login-overlay')?.classList.add('hidden');
+      const initials = currentUser.name.slice(0, 2).toUpperCase();
+      document.getElementById('header-user-initials').textContent = initials;
+      document.getElementById('header-user-name').textContent = currentUser.name;
+      document.getElementById('header-user-role').textContent = currentUser.role;
+      document.getElementById('dropdown-user-name').textContent = currentUser.name;
+      document.getElementById('dropdown-user-email').textContent = currentUser.email;
+      document.getElementById('dropdown-user-role').textContent = currentUser.role;
+
+      const master = isMasterAdmin();
+      const managerOrMaster = isManagerOrMaster();
+
+      document.querySelectorAll('[data-master-only="true"]').forEach(el => el.classList.toggle('hidden', !master));
+      document.getElementById('btn-edit-store-identity')?.classList.toggle('hidden', !managerOrMaster);
+      document.getElementById('dropdown-store-btn')?.classList.toggle('hidden', !managerOrMaster);
+
+      applyStoreIdentity();
+      renderAllViews();
+    }
+
+    function logoutSession() {
+      sessionStorage.removeItem(AUTH_SESSION_KEY);
+      currentUser = null;
+      document.getElementById('profile-dropdown')?.classList.add('hidden');
+      document.getElementById('cloud-login-overlay')?.classList.remove('hidden');
+    }
+
+    function toggleProfileMenu() { document.getElementById('profile-dropdown')?.classList.toggle('hidden'); }
+    function toggleMobileSidebar() { document.getElementById('sidebar')?.classList.toggle('-translate-x-full'); }
+
     function navigateTo(viewId) {
+      if ((viewId === 'equipe' || viewId === 'database') && !isMasterAdmin()) {
+        showToast('Acesso restrito ao Master Admin.', true);
+        return;
+      }
       document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
       document.getElementById(`view-${viewId}`)?.classList.remove('hidden');
-      document.querySelectorAll('.nav-item').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-nav') === viewId);
-      });
+      document.querySelectorAll('.nav-item').forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-nav') === viewId));
+      document.getElementById('sidebar')?.classList.add('-translate-x-full');
+
+      if (viewId === 'dashboard') updateDashboardKPIs();
+      if (viewId === 'estoque') renderProductsTable();
+      if (viewId === 'financeiro') renderFinanceiroView();
+      if (viewId === 'vendas') renderPDVView();
+      if (viewId === 'relatorios') renderSalesReport();
+      if (viewId === 'entidades') renderEntitiesTable();
+      if (viewId === 'custos') renderCostsTable();
+      if (viewId === 'equipe') syncTeamFromSupabase();
     }
-    window.addEventListener('DOMContentLoaded', () => { navigateTo('dashboard'); });
+
+    function applyStoreIdentity() {
+      const store = appState.store || { name: 'Eletro Shop', iconId: 'eletrica', badgeColor: '#3b82f6', paletteId: 'blue' };
+      const palette = THEME_PALETTES.find(p => p.id === store.paletteId) || THEME_PALETTES[0];
+      const iconObj = NICHE_ICONS.find(i => i.id === store.iconId) || NICHE_ICONS[0];
+      const badgeColor = store.badgeColor || palette.primary;
+
+      document.documentElement.style.setProperty('--accent-primary', palette.primary);
+      document.documentElement.style.setProperty('--accent-hover', palette.hover);
+      document.documentElement.style.setProperty('--accent-soft', `${palette.primary}24`);
+      document.documentElement.style.setProperty('--accent-border', `${palette.primary}59`);
+
+      document.getElementById('header-store-name').textContent = store.name;
+      document.getElementById('login-store-title').textContent = `${store.name} • ERP Pro`;
+      document.title = `${store.name} • ERP v4.2 Pro`;
+
+      const svgHtml = `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">${iconObj.svg}</svg>`;
+      const headerLogo = document.getElementById('header-store-logo');
+      const loginLogo = document.getElementById('login-brand-icon');
+      if (headerLogo) { headerLogo.innerHTML = svgHtml; headerLogo.style.background = badgeColor; }
+      if (loginLogo) { loginLogo.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">${iconObj.svg}</svg>`; loginLogo.style.background = badgeColor; }
+    }
+
+    function openStoreIdentityModal() {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      document.getElementById('profile-dropdown')?.classList.add('hidden');
+      const store = appState.store || { name: 'Eletro Shop', iconId: 'eletrica', badgeColor: '#3b82f6', paletteId: 'blue' };
+      document.getElementById('store-name-input').value = store.name;
+      document.getElementById('store-badge-color-input').value = store.badgeColor || '#3b82f6';
+      document.getElementById('store-badge-color-hex').textContent = store.badgeColor || '#3b82f6';
+      selectedNicheIconId = store.iconId || 'eletrica';
+      selectedPaletteId = store.paletteId || 'blue';
+      renderStoreCustomizationGrids();
+      openModal('modal-loja');
+    }
+
+    function syncBadgeColorHex(hex) { document.getElementById('store-badge-color-hex').textContent = hex; }
+
+    function renderStoreCustomizationGrids() {
+      const iconsGrid = document.getElementById('niche-icons-grid');
+      if (iconsGrid) {
+        iconsGrid.innerHTML = NICHE_ICONS.map(item => `
+          <button type="button" onclick="selectNicheIcon('${item.id}')" class="p-2.5 rounded-xl border text-center flex flex-col items-center justify-center gap-1.5 transition ${item.id === selectedNicheIconId ? 'border-sky-500 bg-sky-500/15 text-white' : 'border-slate-800 bg-slate-900/70 text-slate-400 hover:border-slate-700'}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${item.svg}</svg>
+            <span class="text-[10px] font-semibold truncate w-full">${item.label}</span>
+          </button>
+        `).join('');
+      }
+      const palettesGrid = document.getElementById('theme-palettes-grid');
+      if (palettesGrid) {
+        palettesGrid.innerHTML = THEME_PALETTES.map(pal => `
+          <button type="button" onclick="selectThemePalette('${pal.id}')" class="p-3 rounded-xl border text-left flex items-center gap-3 transition ${pal.id === selectedPaletteId ? 'border-white bg-slate-800/90' : 'border-slate-800 bg-slate-900/70 hover:border-slate-700'}">
+            <span class="w-6 h-6 rounded-full shrink-0 shadow" style="background:${pal.primary}"></span>
+            <div class="min-w-0"><div class="text-xs font-bold text-white truncate">${pal.name}</div><div class="text-[10px] font-mono text-slate-400">${pal.primary}</div></div>
+          </button>
+        `).join('');
+      }
+    }
+
+    function selectNicheIcon(id) { selectedNicheIconId = id; renderStoreCustomizationGrids(); }
+    function selectThemePalette(id) {
+      selectedPaletteId = id;
+      const pal = THEME_PALETTES.find(p => p.id === id);
+      if (pal) { document.getElementById('store-badge-color-input').value = pal.primary; syncBadgeColorHex(pal.primary); }
+      renderStoreCustomizationGrids();
+    }
+
+    function saveStoreIdentity() {
+      if (!isManagerOrMaster()) return;
+      appState.store = {
+        name: document.getElementById('store-name-input').value.trim() || 'Eletro Shop',
+        iconId: selectedNicheIconId,
+        badgeColor: document.getElementById('store-badge-color-input').value || '#3b82f6',
+        paletteId: selectedPaletteId
+      };
+      applyStoreIdentity();
+      saveState();
+      closeModal('modal-loja');
+      showToast('Identidade visual atualizada com sucesso!');
+    }
+
+    function updateDashboardKPIs() {
+      const totalRevenue = appState.sales.reduce((acc, s) => acc + Number(s.total || 0), 0);
+      const totalIn = appState.transactions.filter(t => t.type === 'entrada').reduce((acc, t) => acc + Number(t.amount || 0), 0);
+      const totalOut = appState.transactions.filter(t => t.type === 'saida').reduce((acc, t) => acc + Number(t.amount || 0), 0);
+      const cashBalance = Number(appState.initialCash || 0) + totalIn - totalOut;
+
+      const stockUnits = appState.products.reduce((acc, p) => acc + Number(p.stock || 0), 0);
+      const stockValue = appState.products.reduce((acc, p) => acc + (Number(p.stock || 0) * Number(p.price || 0)), 0);
+      const avgTicket = appState.sales.length > 0 ? totalRevenue / appState.sales.length : 0;
+
+      document.getElementById('kpi-total-revenue').textContent = formatBRL(totalRevenue);
+      document.getElementById('kpi-cash-balance').textContent = formatBRL(cashBalance);
+      document.getElementById('kpi-stock-units').textContent = `${stockUnits} un.`;
+      document.getElementById('kpi-stock-value').textContent = `Valor total: ${formatBRL(stockValue)}`;
+      document.getElementById('kpi-avg-ticket').textContent = formatBRL(avgTicket);
+      document.getElementById('kpi-sales-count').textContent = `${appState.sales.length} vendas concluídas`;
+      document.getElementById('sidebar-stock-badge').textContent = appState.products.length;
+
+      const actBody = document.getElementById('recent-activity-body');
+      if (actBody) {
+        actBody.innerHTML = appState.transactions.slice(0, 6).map(t => `
+          <tr class="hover:bg-slate-800/40">
+            <td class="py-3 px-3 text-slate-400">${t.date}</td>
+            <td class="py-3 px-3 font-semibold text-white">${t.desc}</td>
+            <td class="py-3 px-3 text-slate-300">${t.method || 'Dinheiro'}</td>
+            <td class="py-3 px-3 text-right font-bold ${t.type === 'entrada' ? 'text-emerald-400' : 'text-red-400'}">${t.type === 'entrada' ? '+ ' : '- '}${formatBRL(t.amount)}</td>
+          </tr>
+        `).join('');
+      }
+      renderCharts(totalRevenue);
+    }
+
+    function renderCharts(todayRevenue) {
+      if (!window.Chart) return;
+      const cfCanvas = document.getElementById('cashflowChart');
+      if (cfCanvas) {
+        if (cashflowChartInstance) cashflowChartInstance.destroy();
+        const ctx = cfCanvas.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 260);
+        grad.addColorStop(0, 'rgba(59, 130, 246, 0.25)');
+        grad.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+        cashflowChartInstance = new Chart(cfCanvas, {
+          type: 'line',
+          data: {
+            labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Hoje'],
+            datasets: [{
+              data: [620, 890, 740, 1120, 980, 1450, Number(todayRevenue || 378)],
+              borderColor: '#3b82f6', backgroundColor: grad, fill: true, tension: 0.42, borderWidth: 2.5
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+      }
+
+      const catCanvas = document.getElementById('categoryChart');
+      if (catCanvas) {
+        if (categoryChartInstance) categoryChartInstance.destroy();
+        const groups = {};
+        appState.products.forEach(p => { groups[p.group || 'Geral'] = (groups[p.group || 'Geral'] || 0) + Number(p.stock || 0); });
+        categoryChartInstance = new Chart(catCanvas, {
+          type: 'doughnut',
+          data: { labels: Object.keys(groups), datasets: [{ data: Object.values(groups), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'] }] },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '66%', plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 } } } } }
+        });
+      }
+    }
+
+    function renderProductsTable() {
+      const tbody = document.getElementById('products-table-body');
+      if (!tbody) return;
+      const query = (document.getElementById('stock-search-input')?.value || '').toLowerCase();
+      const filtered = appState.products.filter(p => p.name.toLowerCase().includes(query) || String(p.sku || '').toLowerCase().includes(query));
+      const canManage = isManagerOrMaster();
+
+      tbody.innerHTML = filtered.map(p => `
+        <tr class="hover:bg-slate-800/40">
+          <td class="py-3 px-3 font-mono text-slate-400">${p.sku || p.id}</td>
+          <td class="py-3 px-3 font-semibold text-white">${p.name}</td>
+          <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[11px]">${p.group}</span></td>
+          <td class="py-3 px-3 text-right font-bold text-emerald-400">${formatBRL(p.price)}</td>
+          <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded-full font-bold ${p.stock <= 5 ? 'bg-amber-500/20 text-amber-300' : 'bg-sky-500/15 text-sky-300'}">${p.stock} un.</span></td>
+          <td class="py-3 px-3 text-right space-x-2">
+            ${canManage ? `<button onclick="openProductModal('${p.id}')" class="text-sky-400 hover:underline font-semibold">Editar</button><button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:underline font-semibold">Excluir</button>` : '<span class="text-slate-500 text-[11px]">Leitura</span>'}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openProductModal(prodId = null) {
+      const prod = prodId ? appState.products.find(p => p.id === prodId) : null;
+      document.getElementById('product-modal-title').textContent = prod ? 'Editar Produto' : 'Cadastrar Produto';
+      document.getElementById('prod-id').value = prod ? prod.id : '';
+      document.getElementById('prod-sku').value = prod ? (prod.sku || '') : '';
+      document.getElementById('prod-name').value = prod ? prod.name : '';
+      document.getElementById('prod-group').value = prod ? prod.group : '';
+      document.getElementById('prod-stock').value = prod ? prod.stock : 10;
+      document.getElementById('prod-cost').value = prod ? prod.cost : 0;
+      document.getElementById('prod-price').value = prod ? prod.price : '';
+      openModal('modal-produto');
+    }
+
+    function closeProductModal() { stopBarcodeCamera(); closeModal('modal-produto'); }
+
+    function saveProduct(e) {
+      e.preventDefault();
+      const id = document.getElementById('prod-id').value;
+      const item = {
+        id: id || `PRD-${Date.now().toString().slice(-5)}`,
+        sku: document.getElementById('prod-sku').value.trim() || `EAN-${Date.now().toString().slice(-6)}`,
+        name: document.getElementById('prod-name').value.trim(),
+        group: document.getElementById('prod-group').value.trim() || 'Geral',
+        stock: Number(document.getElementById('prod-stock').value || 0),
+        cost: Number(document.getElementById('prod-cost').value || 0),
+        price: Number(document.getElementById('prod-price').value || 0)
+      };
+
+      if (id) {
+        const idx = appState.products.findIndex(p => p.id === id);
+        if (idx >= 0) appState.products[idx] = item;
+      } else {
+        appState.products.unshift(item);
+      }
+      saveState();
+      renderProductsTable();
+      updateDashboardKPIs();
+      closeProductModal();
+      showToast('Produto salvo com sucesso!');
+    }
+
+    function deleteProduct(id) {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      appState.products = appState.products.filter(p => p.id !== id);
+      saveState();
+      renderProductsTable();
+      updateDashboardKPIs();
+      showToast('Produto removido.');
+    }
+
+    async function toggleBarcodeCamera() {
+      const box = document.getElementById('barcode-camera-box');
+      if (!box.classList.contains('hidden')) { stopBarcodeCamera(); return; }
+      try {
+        barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        const video = document.getElementById('barcode-video');
+        video.srcObject = barcodeStream;
+        box.classList.remove('hidden');
+        document.getElementById('btn-toggle-camera').textContent = 'Fechar Câmera';
+      } catch {
+        showToast('Não foi possível acessar a câmera.', true);
+      }
+    }
+
+    function stopBarcodeCamera() {
+      if (barcodeStream) { barcodeStream.getTracks().forEach(t => t.stop()); barcodeStream = null; }
+      document.getElementById('barcode-camera-box')?.classList.add('hidden');
+      const btn = document.getElementById('btn-toggle-camera');
+      if (btn) btn.textContent = 'Ler com Câmera';
+    }
+
+    async function lookupBarcodeOnline() {
+      const code = document.getElementById('prod-sku').value.trim();
+      if (!code) return;
+      const existing = appState.products.find(p => p.sku === code);
+      if (existing) {
+        document.getElementById('prod-name').value = existing.name;
+        document.getElementById('prod-group').value = existing.group;
+        document.getElementById('prod-price').value = existing.price;
+        showToast('Produto localizado!');
+      } else {
+        showToast('Código EAN registrado. Preencha os campos.');
+      }
+    }
+
+    function openSaleModal() { navigateTo('vendas'); }
+
+    function renderPDVView() {
+      const custSelect = document.getElementById('pdv-customer-select');
+      if (custSelect) {
+        const clients = appState.entities.filter(e => e.type === 'Cliente');
+        custSelect.innerHTML = `<option value="Consumidor Final">Consumidor Final</option>` +
+          clients.filter(c => c.name !== 'Consumidor Final').map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      }
+      renderPDVGrid();
+      renderPDVCart();
+    }
+
+    function renderPDVGrid() {
+      const grid = document.getElementById('pdv-products-grid');
+      if (!grid) return;
+      const q = (document.getElementById('pdv-search-input')?.value || '').toLowerCase();
+      const filtered = appState.products.filter(p => p.name.toLowerCase().includes(q) || String(p.sku || '').toLowerCase().includes(q));
+
+      grid.innerHTML = filtered.map(p => `
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between gap-3">
+          <div><div class="text-[10px] text-slate-400 font-mono mb-1">${p.sku || p.id} • Est: ${p.stock}</div><h4 class="text-xs font-bold text-white">${p.name}</h4></div>
+          <div class="flex items-center justify-between"><span class="text-sm font-extrabold text-white">${formatBRL(p.price)}</span><button type="button" onclick="addProductToPDV('${p.id}')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-sky-600 text-xs font-bold text-white">+ Add</button></div>
+        </div>
+      `).join('');
+    }
+
+    function addProductToPDV(prodId) {
+      const prod = appState.products.find(p => p.id === prodId);
+      if (!prod) return;
+      const existing = cartItems.find(i => i.id === prod.id);
+      if (existing) existing.qty += 1;
+      else cartItems.push({ id: prod.id, name: prod.name, price: Number(prod.price), qty: 1 });
+      renderPDVCart();
+    }
+
+    function updatePDVCartQty(idx, delta) {
+      if (!cartItems[idx]) return;
+      cartItems[idx].qty += delta;
+      if (cartItems[idx].qty <= 0) cartItems.splice(idx, 1);
+      renderPDVCart();
+    }
+
+    function clearPDVCart() { cartItems = []; renderPDVCart(); }
+
+    function renderPDVCart() {
+      const box = document.getElementById('pdv-cart-items');
+      const totalEl = document.getElementById('pdv-cart-total');
+      if (!box || !totalEl) return;
+      if (cartItems.length === 0) {
+        box.innerHTML = '<p class="text-xs text-slate-500 text-center py-10">Carrinho vazio.</p>';
+        totalEl.textContent = 'R$ 0,00';
+        return;
+      }
+      let total = 0;
+      box.innerHTML = cartItems.map((item, idx) => {
+        const sub = item.price * item.qty;
+        total += sub;
+        return `
+          <div class="py-2 flex items-center justify-between gap-2 text-xs">
+            <div class="min-w-0 flex-1"><div class="font-semibold text-white truncate">${item.name}</div><div class="text-[11px] text-slate-400">${formatBRL(item.price)} un.</div></div>
+            <div class="flex items-center gap-1.5"><button type="button" onclick="updatePDVCartQty(${idx}, -1)" class="w-6 h-6 rounded bg-slate-800 text-slate-300 font-bold">-</button><span class="w-5 text-center font-bold text-white">${item.qty}</span><button type="button" onclick="updatePDVCartQty(${idx}, 1)" class="w-6 h-6 rounded bg-slate-800 text-slate-300 font-bold">+</button></div>
+            <div class="font-bold text-emerald-400 w-20 text-right">${formatBRL(sub)}</div>
+          </div>
+        `;
+      }).join('');
+      totalEl.textContent = formatBRL(total);
+    }
+
+    function openBarcodeQuickScanPDV() { document.getElementById('pdv-search-input')?.focus(); }
+
+    function completePDVSale() {
+      if (cartItems.length === 0) return showToast('Carrinho vazio.', true);
+      const total = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const customer = document.getElementById('pdv-customer-select')?.value || 'Consumidor Final';
+      const payment = document.getElementById('pdv-payment-select')?.value || 'Pix';
+
+      cartItems.forEach(item => {
+        const prod = appState.products.find(p => p.id === item.id);
+        if (prod) prod.stock = Math.max(0, Number(prod.stock) - item.qty);
+      });
+
+      const saleId = `VND-${1000 + appState.sales.length + 1}`;
+      const nowStr = new Date().toLocaleString('pt-BR');
+
+      appState.sales.unshift({ id: saleId, date: nowStr, customer, payment, items: [...cartItems], total });
+      appState.transactions.unshift({ id: `TX-${Date.now().toString().slice(-5)}`, date: nowStr, type: 'entrada', desc: `Venda ${saleId}`, method: payment, amount: total });
+
+      cartItems = [];
+      saveState();
+      renderAllViews();
+      showToast(`Venda ${saleId} finalizada!`);
+    }
+
+    function generatePDVQuotePDF() {
+      if (cartItems.length === 0) return showToast('Adicione itens.', true);
+      const total = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const win = window.open('', '_blank');
+      win.document.write(`<html><head><title>Orçamento</title></head><body style="font-family:Arial;padding:20px;"><h2>Orçamento • ${appState.store.name}</h2><hr/><ul>${cartItems.map(i=>`<li>${i.qty}x ${i.name} - ${formatBRL(i.price*i.qty)}</li>`).join('')}</ul><h3>Total: ${formatBRL(total)}</h3><script>window.print();<\/script></body></html>`);
+      win.document.close();
+    }
+
+    function renderFinanceiroView() {
+      const initInput = document.getElementById('initial-cash-input');
+      if (initInput) { initInput.value = Number(appState.initialCash || 0).toFixed(2).replace('.', ','); initInput.disabled = !isManagerOrMaster(); }
+      const totalIn = appState.transactions.filter(t => t.type === 'entrada').reduce((a, b) => a + Number(b.amount || 0), 0);
+      const totalOut = appState.transactions.filter(t => t.type === 'saida').reduce((a, b) => a + Number(b.amount || 0), 0);
+      const finalBal = Number(appState.initialCash || 0) + totalIn - totalOut;
+
+      document.getElementById('fin-total-in').textContent = formatBRL(totalIn);
+      document.getElementById('fin-total-out').textContent = formatBRL(totalOut);
+      document.getElementById('fin-final-balance').textContent = formatBRL(finalBal);
+
+      const tbody = document.getElementById('transactions-table-body');
+      if (tbody) {
+        const canManage = isManagerOrMaster();
+        tbody.innerHTML = appState.transactions.map(t => `
+          <tr class="hover:bg-slate-800/40">
+            <td class="py-3 px-3 text-slate-400">${t.date}</td>
+            <td class="py-3 px-3"><span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${t.type === 'entrada' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}">${t.type}</span></td>
+            <td class="py-3 px-3 font-semibold text-white">${t.desc}</td>
+            <td class="py-3 px-3 text-slate-300">${t.method || 'Dinheiro'}</td>
+            <td class="py-3 px-3 text-right font-bold ${t.type === 'entrada' ? 'text-emerald-400' : 'text-red-400'}">${t.type === 'entrada' ? '+ ' : '- '}${formatBRL(t.amount)}</td>
+            <td class="py-3 px-3 text-right space-x-2">
+              ${canManage ? `<button onclick="openEditTransactionModal('${t.id}')" class="text-sky-400 hover:underline">Editar</button><button onclick="deleteCashTransaction('${t.id}')" class="text-red-400 hover:underline">Excluir</button>` : '-'}
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function openEditTransactionModal(txId) {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      const tx = appState.transactions.find(t => t.id === txId);
+      if (!tx) return;
+      document.getElementById('edit-tx-id').value = tx.id;
+      document.getElementById('edit-tx-type').value = tx.type;
+      document.getElementById('edit-tx-method').value = tx.method || 'Dinheiro';
+      document.getElementById('edit-tx-desc').value = tx.desc;
+      document.getElementById('edit-tx-amount').value = Number(tx.amount || 0).toFixed(2);
+      openModal('modal-edit-tx');
+    }
+
+    function saveEditedTransaction(e) {
+      e.preventDefault();
+      if (!isManagerOrMaster()) return;
+      const id = document.getElementById('edit-tx-id').value;
+      const idx = appState.transactions.findIndex(t => t.id === id);
+      if (idx >= 0) {
+        appState.transactions[idx] = {
+          ...appState.transactions[idx],
+          type: document.getElementById('edit-tx-type').value,
+          method: document.getElementById('edit-tx-method').value,
+          desc: document.getElementById('edit-tx-desc').value.trim(),
+          amount: Number(document.getElementById('edit-tx-amount').value || 0)
+        };
+        saveState();
+        renderFinanceiroView();
+        updateDashboardKPIs();
+        closeModal('modal-edit-tx');
+        showToast('Atualizado com sucesso!');
+      }
+    }
+
+    function deleteCashTransaction(txId) {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      appState.transactions = appState.transactions.filter(t => t.id !== txId);
+      saveState();
+      renderFinanceiroView();
+      updateDashboardKPIs();
+      showToast('Excluído.');
+    }
+
+    function updateInitialCash() {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      const raw = String(document.getElementById('initial-cash-input').value || '0').replace(/\./g, '').replace(',', '.');
+      appState.initialCash = Number(raw) || 0;
+      saveState();
+      renderFinanceiroView();
+      updateDashboardKPIs();
+      showToast('Saldo inicial atualizado!');
+    }
+
+    function addCashTransaction(e) {
+      e.preventDefault();
+      appState.transactions.unshift({
+        id: `TX-${Date.now().toString().slice(-5)}`,
+        date: new Date().toLocaleString('pt-BR'),
+        type: document.getElementById('tx-type').value,
+        desc: document.getElementById('tx-desc').value.trim(),
+        method: document.getElementById('tx-method')?.value || 'Dinheiro',
+        amount: Number(document.getElementById('tx-amount').value || 0)
+      });
+      e.target.reset();
+      saveState();
+      renderFinanceiroView();
+      updateDashboardKPIs();
+      showToast('Movimentação registrada!');
+    }
+
+    function renderSalesReport() {
+      const container = document.getElementById('report-payment-cards');
+      if (!container) return;
+      const methods = ['Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro'];
+      container.innerHTML = methods.map(m => {
+        const sum = appState.sales.filter(s => String(s.payment).toLowerCase() === m.toLowerCase()).reduce((a, b) => a + Number(b.total || 0), 0);
+        return `<div class="erp-card p-5"><span class="text-xs font-semibold text-slate-400">${m}</span><div class="text-xl font-extrabold text-white mt-1">${formatBRL(sum)}</div></div>`;
+      }).join('');
+    }
+
+    function printSalesReportPDF() {
+      const totalSales = appState.sales.reduce((a, b) => a + Number(b.total || 0), 0);
+      const win = window.open('', '_blank');
+      win.document.write(`<html><head><title>Fechamento</title></head><body style="font-family:Arial;padding:20px;"><h2>Fechamento de Caixa • ${appState.store.name}</h2><p>Total: ${formatBRL(totalSales)}</p><script>window.print();<\/script></body></html>`);
+      win.document.close();
+    }
+
+    function addEntity(e) {
+      e.preventDefault();
+      appState.entities.unshift({
+        id: `ENT-${Date.now().toString().slice(-5)}`,
+        type: document.getElementById('entity-type').value,
+        name: document.getElementById('entity-name').value.trim(),
+        doc: document.getElementById('entity-doc').value.trim() || '-',
+        phone: document.getElementById('entity-phone').value.trim() || '-'
+      });
+      e.target.reset();
+      saveState();
+      renderEntitiesTable();
+      showToast('Salvo!');
+    }
+
+    function deleteEntity(id) {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      appState.entities = appState.entities.filter(x => x.id !== id);
+      saveState();
+      renderEntitiesTable();
+    }
+
+    function renderEntitiesTable() {
+      const tbody = document.getElementById('entities-table-body');
+      if (!tbody) return;
+      const canManage = isManagerOrMaster();
+      tbody.innerHTML = appState.entities.map(ent => `
+        <tr class="hover:bg-slate-800/40">
+          <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[11px]">${ent.type}</span></td>
+          <td class="py-3 px-3 font-semibold text-white">${ent.name}</td>
+          <td class="py-3 px-3 text-slate-400">${ent.doc}</td>
+          <td class="py-3 px-3 text-slate-300">${ent.phone}</td>
+          <td class="py-3 px-3 text-right">${canManage ? `<button onclick="deleteEntity('${ent.id}')" class="text-red-400 hover:underline">Remover</button>` : '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function addCost(e) {
+      e.preventDefault();
+      appState.costs.unshift({
+        id: `CST-${Date.now().toString().slice(-5)}`,
+        desc: document.getElementById('cost-desc').value.trim(),
+        budget: Number(document.getElementById('cost-budget').value || 0),
+        actual: Number(document.getElementById('cost-actual').value || 0)
+      });
+      e.target.reset();
+      saveState();
+      renderCostsTable();
+      showToast('Adicionado!');
+    }
+
+    function deleteCost(id) {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      appState.costs = appState.costs.filter(c => c.id !== id);
+      saveState();
+      renderCostsTable();
+    }
+
+    function renderCostsTable() {
+      const tbody = document.getElementById('costs-table-body');
+      if (!tbody) return;
+      const canManage = isManagerOrMaster();
+      tbody.innerHTML = appState.costs.map(c => {
+        const diff = Number(c.budget) - Number(c.actual);
+        return `
+          <tr class="hover:bg-slate-800/40">
+            <td class="py-3 px-3 font-semibold text-white">${c.desc}</td>
+            <td class="py-3 px-3 text-right text-slate-300">${formatBRL(c.budget)}</td>
+            <td class="py-3 px-3 text-right text-slate-300">${formatBRL(c.actual)}</td>
+            <td class="py-3 px-3 text-right font-bold ${diff >= 0 ? 'text-emerald-400' : 'text-red-400'}">${formatBRL(diff)}</td>
+            <td class="py-3 px-3 text-right">${canManage ? `<button onclick="deleteCost('${c.id}')" class="text-red-400 hover:underline">Excluir</button>` : '-'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function syncTeamFromSupabase() {
+      if (!isMasterAdmin() || !supabaseClient) return;
+      try {
+        const { data, error } = await supabaseClient.from('erp_team_users').select('*');
+        if (error) throw error;
+        const tbody = document.getElementById('team-table-body');
+        if (tbody) {
+          tbody.innerHTML = (data || []).map(u => `
+            <tr class="hover:bg-slate-800/40">
+              <td class="py-3 px-3 font-bold text-white">${u.username}</td>
+              <td class="py-3 px-3 text-slate-400">${u.email || '-'}</td>
+              <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full badge-accent text-[11px] font-bold">${u.role}</span></td>
+              <td class="py-3 px-3 text-emerald-400 font-semibold">Ativo</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        showToast('Erro ao sincronizar equipe: ' + err.message, true);
+      }
+    }
+
+    function renderAllViews() {
+      updateDashboardKPIs();
+      renderProductsTable();
+      renderFinanceiroView();
+      renderPDVView();
+      renderSalesReport();
+      renderEntitiesTable();
+      renderCostsTable();
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      loadLocalState();
+      initSupabaseClient();
+      applyStoreIdentity();
+
+      try {
+        const savedSession = JSON.parse(sessionStorage.getItem(AUTH_SESSION_KEY) || 'null');
+        if (savedSession && savedSession.name) {
+          currentUser = savedSession;
+          applyAuthenticatedSession();
+          await pullStateFromSupabase(false);
+        }
+      } catch {
+        sessionStorage.removeItem(AUTH_SESSION_KEY);
+      }
+    });
   </script>
 </body>
 </html>
