@@ -112,6 +112,26 @@
       background: #334155;
     }
   </style>
+
+<style id="eletro-ia-styles">
+#eletro-ai-launcher{position:fixed;right:22px;bottom:22px;z-index:80;width:58px;height:58px;border:0;border-radius:19px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:white;box-shadow:0 12px 35px #0008;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s}
+#eletro-ai-launcher:hover{transform:translateY(-3px) scale(1.03)}
+#eletro-ai-panel{position:fixed;right:22px;bottom:92px;z-index:80;width:min(410px,calc(100vw - 28px));height:min(610px,calc(100vh - 125px));background:#0f172a;border:1px solid #334155;border-radius:20px;box-shadow:0 24px 70px #000b;display:none;overflow:hidden;color:#e2e8f0}
+#eletro-ai-panel.open{display:flex;flex-direction:column}
+.eai-head{padding:15px 17px;background:linear-gradient(120deg,#172554,#312e81);display:flex;align-items:center;gap:11px;border-bottom:1px solid #334155}
+.eai-avatar{width:38px;height:38px;border-radius:13px;background:#2563eb;display:grid;place-items:center;font-size:20px}
+.eai-messages{flex:1;overflow:auto;padding:15px;display:flex;flex-direction:column;gap:12px}
+.eai-msg{max-width:90%;padding:11px 13px;border-radius:14px;font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.eai-msg.bot{align-self:flex-start;background:#1e293b;border:1px solid #334155}
+.eai-msg.user{align-self:flex-end;background:#1d4ed8;color:white}
+.eai-compose{padding:12px;border-top:1px solid #334155;display:flex;gap:8px;background:#111827}
+#eai-input{min-width:0;flex:1;background:#0b1120;border:1px solid #475569;border-radius:12px;padding:11px;color:white;font-size:13px;outline:none}
+#eai-send{border:0;border-radius:12px;padding:0 15px;background:#2563eb;color:white;font-weight:700;cursor:pointer}
+#eai-send:disabled{opacity:.5;cursor:wait}
+.eai-note{font-size:10px;color:#94a3b8;padding:0 14px 10px;background:#111827}
+@media(max-width:520px){#eletro-ai-launcher{right:14px;bottom:14px}#eletro-ai-panel{right:8px;bottom:82px;width:calc(100vw - 16px);height: min(72vh,620px)}}
+</style>
+
 </head>
 <body class="min-h-screen flex flex-col">
 
@@ -166,6 +186,11 @@
               <span id="store-badge-color-hex" class="text-xs font-mono text-slate-300">#3b82f6</span>
             </div>
           </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">CNPJ da Loja</label>
+          <input type="text" id="store-cnpj-input" placeholder="00.000.000/0001-00" class="erp-input w-full px-3.5 py-2.5 text-sm font-mono" />
         </div>
 
         <div>
@@ -267,6 +292,11 @@
               <span>Painel Executivo</span>
             </button>
 
+            <button onclick="navigateTo('kpis')" data-nav="kpis" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition">
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
+              <span>Metas & Indicadores</span>
+            </button>
+
             <button onclick="navigateTo('estoque')" data-nav="estoque" class="nav-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition">
               <span class="flex items-center gap-3">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
@@ -348,8 +378,8 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
               </span>
             </div>
-            <div id="kpi-total-revenue" class="text-2xl font-extrabold text-white">R$ 744,90</div>
-            <p class="text-[11px] text-emerald-400 mt-1 font-medium">+14,8% <span class="text-slate-400 font-normal">vs. período anterior</span></p>
+            <div id="kpi-total-revenue" class="text-2xl font-extrabold text-white">R$ 0,00</div>
+            <p id="kpi-revenue-subtitle" class="text-[11px] text-emerald-400 mt-1 font-medium">Calculado 100% pelo PDV</p>
           </div>
 
           <div class="erp-card p-5">
@@ -421,6 +451,32 @@
               <tbody id="recent-activity-body" class="divide-y divide-slate-800/70"></tbody>
             </table>
           </div>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW: METAS & INDICADORES ==================== -->
+      <section id="view-kpis" class="view-section hidden space-y-6">
+        <div>
+          <h2 class="text-2xl font-extrabold text-white">Metas & Indicadores de Receita</h2>
+          <p class="text-xs text-slate-400">Visualize e ajuste os parâmetros automáticos de Receita Líquida, Ticket Médio e metas da loja.</p>
+        </div>
+
+        <div class="erp-card p-6 space-y-5 max-w-xl">
+          <h3 class="text-sm font-bold text-white border-b border-slate-800 pb-3">Configuração e Ajuste Manual de Indicadores</h3>
+          <form onsubmit="saveCustomKPIs(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Receita Líquida Base / Ajustada (R$)</label>
+              <input type="number" step="0.01" id="custom-revenue-input" class="erp-input w-full px-3.5 py-2.5 text-xs font-bold" />
+              <p class="text-[11px] text-slate-500 mt-1">Se definido como 0, o sistema calculará automaticamente com base nas vendas do PDV.</p>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Meta de Faturamento Mensal (R$)</label>
+              <input type="number" step="0.01" id="custom-target-input" class="erp-input w-full px-3.5 py-2.5 text-xs font-bold" />
+            </div>
+            <div class="flex justify-end pt-2">
+              <button type="submit" class="btn-accent px-5 py-2.5 text-xs font-bold shadow-lg">Salvar Indicadores</button>
+            </div>
+          </form>
         </div>
       </section>
 
@@ -616,7 +672,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 class="text-xl font-extrabold text-white">Relatório Gerencial & Fechamento de Caixa</h2>
-            <p class="text-xs text-slate-400">Resumo por forma de pagamento, entradas/saídas e impressão formatada em PDF</p>
+            <p class="text-xs text-slate-400">Resumo por forma de pagamento, histórico de vendas sincronizado e impressão em PDF</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <select id="report-period-select" onchange="renderSalesReport()" class="erp-input px-3 py-2 text-xs">
@@ -633,6 +689,28 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="report-payment-cards"></div>
+
+        <div class="erp-card p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white">Histórico Geral de Vendas (Sincronizado)</h3>
+            <span class="text-xs text-slate-400">Excluir uma venda remove automaticamente dos cálculos e do caixa</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 uppercase text-[11px]">
+                  <th class="py-3 px-3">CÓDIGO / DATA</th>
+                  <th class="py-3 px-3">CLIENTE</th>
+                  <th class="py-3 px-3">PAGAMENTO</th>
+                  <th class="py-3 px-3">ITENS</th>
+                  <th class="py-3 px-3 text-right">TOTAL</th>
+                  <th class="py-3 px-3 text-right">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody id="sales-history-table-body" class="divide-y divide-slate-800/70"></tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <!-- ==================== VIEW 6: ENTIDADES ==================== -->
@@ -932,8 +1010,10 @@
     let barcodeInterval = null;
 
     let appState = {
-      store: { name: 'Eletro Shop', iconId: 'eletrica', badgeColor: '#3b82f6', paletteId: 'blue' },
+      store: { name: 'Eletro Shop', iconId: 'eletrica', badgeColor: '#3b82f6', paletteId: 'blue', cnpj: '00.000.000/0001-00' },
       initialCash: 2500.00,
+      customRevenue: 0,
+      customTarget: 10000.00,
       products: [
         { id: 'PRD-01', sku: '7891001001', name: 'Disjuntor DIN Bipolar 32A Curva C', group: 'Elétrica & Automação', stock: 48, cost: 24.00, price: 42.90 },
         { id: 'PRD-02', sku: '7891001002', name: 'Cabo Flexível 2,5mm² Rolo 100m Preto', group: 'Cabos & Fios', stock: 22, cost: 118.00, price: 189.00 },
@@ -1114,6 +1194,8 @@
           return;
         }
 
+        // A senha não é persistida no navegador; fica apenas em memória para autenticar chamadas à API.
+        eletroAICredentials = { username: loginInput, password: passInput };
         currentUser = {
           id: matched.id,
           name: matched.username,
@@ -1157,6 +1239,8 @@
     }
 
     function logoutSession() {
+      eletroAICredentials = null;
+      eletroAIHistory = [];
       sessionStorage.removeItem(AUTH_SESSION_KEY);
       currentUser = null;
       document.getElementById('profile-dropdown')?.classList.add('hidden');
@@ -1183,11 +1267,15 @@
       if (viewId === 'relatorios') renderSalesReport();
       if (viewId === 'entidades') renderEntitiesTable();
       if (viewId === 'custos') renderCostsTable();
+      if (viewId === 'kpis') {
+        document.getElementById('custom-revenue-input').value = appState.customRevenue || 0;
+        document.getElementById('custom-target-input').value = appState.customTarget || 10000;
+      }
       if (viewId === 'equipe') syncTeamFromSupabase();
     }
 
     function applyStoreIdentity() {
-      const store = appState.store || { name: 'Eletro Shop', iconId: 'eletrica', badgeColor: '#3b82f6', paletteId: 'blue' };
+      const store = appState.store || { name: 'Eletro Shop', iconId: 'eletrica', badgeColor: '#3b82f6', paletteId: 'blue', cnpj: '' };
       const palette = THEME_PALETTES.find(p => p.id === store.paletteId) || THEME_PALETTES[0];
       const iconObj = NICHE_ICONS.find(i => i.id === store.iconId) || NICHE_ICONS[0];
       const badgeColor = store.badgeColor || palette.primary;
@@ -1211,8 +1299,9 @@
     function openStoreIdentityModal() {
       if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
       document.getElementById('profile-dropdown')?.classList.add('hidden');
-      const store = appState.store || { name: 'Eletro Shop', iconId: 'eletrica', badgeColor: '#3b82f6', paletteId: 'blue' };
+      const store = appState.store || { name: 'Eletro Shop', iconId: 'eletrica', badgeColor: '#3b82f6', paletteId: 'blue', cnpj: '' };
       document.getElementById('store-name-input').value = store.name;
+      document.getElementById('store-cnpj-input').value = store.cnpj || '';
       document.getElementById('store-badge-color-input').value = store.badgeColor || '#3b82f6';
       document.getElementById('store-badge-color-hex').textContent = store.badgeColor || '#3b82f6';
       selectedNicheIconId = store.iconId || 'eletrica';
@@ -1256,6 +1345,7 @@
       if (!isManagerOrMaster()) return;
       appState.store = {
         name: document.getElementById('store-name-input').value.trim() || 'Eletro Shop',
+        cnpj: document.getElementById('store-cnpj-input').value.trim() || '',
         iconId: selectedNicheIconId,
         badgeColor: document.getElementById('store-badge-color-input').value || '#3b82f6',
         paletteId: selectedPaletteId
@@ -1266,15 +1356,27 @@
       showToast('Identidade visual atualizada com sucesso!');
     }
 
+    function saveCustomKPIs(e) {
+      e.preventDefault();
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      appState.customRevenue = Number(document.getElementById('custom-revenue-input').value || 0);
+      appState.customTarget = Number(document.getElementById('custom-target-input').value || 10000);
+      saveState();
+      updateDashboardKPIs();
+      showToast('Metas e indicadores salvos com sucesso!');
+    }
+
     function updateDashboardKPIs() {
-      const totalRevenue = appState.sales.reduce((acc, s) => acc + Number(s.total || 0), 0);
+      const calcRevenue = appState.sales.reduce((acc, s) => acc + Number(s.total || 0), 0);
+      const totalRevenue = (appState.customRevenue !== undefined && appState.customRevenue !== null && appState.customRevenue > 0) ? Number(appState.customRevenue) : calcRevenue;
+
       const totalIn = appState.transactions.filter(t => t.type === 'entrada').reduce((acc, t) => acc + Number(t.amount || 0), 0);
       const totalOut = appState.transactions.filter(t => t.type === 'saida').reduce((acc, t) => acc + Number(t.amount || 0), 0);
       const cashBalance = Number(appState.initialCash || 0) + totalIn - totalOut;
 
       const stockUnits = appState.products.reduce((acc, p) => acc + Number(p.stock || 0), 0);
       const stockValue = appState.products.reduce((acc, p) => acc + (Number(p.stock || 0) * Number(p.price || 0)), 0);
-      const avgTicket = appState.sales.length > 0 ? totalRevenue / appState.sales.length : 0;
+      const avgTicket = appState.sales.length > 0 ? totalRevenue / appState.sales.length : (totalRevenue > 0 ? totalRevenue : 0);
 
       document.getElementById('kpi-total-revenue').textContent = formatBRL(totalRevenue);
       document.getElementById('kpi-cash-balance').textContent = formatBRL(cashBalance);
@@ -1520,8 +1622,8 @@
         return;
       }
 
-      if (!/^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(code) && code.length < 3) {
-        setBarcodeLookupStatus('Informe um código de barras válido (EAN/GTIN).', 'warning');
+      if (code.length < 3) {
+        setBarcodeLookupStatus('Informe um código de barras válido.', 'warning');
         return;
       }
 
@@ -1532,30 +1634,50 @@
         button.textContent = 'Buscando...';
         button.classList.add('opacity-60', 'cursor-not-allowed');
       }
-      setBarcodeLookupStatus('Consultando base de dados de produtos...', 'loading');
+      setBarcodeLookupStatus('Consultando base de dados geral e web...', 'loading');
 
       try {
         let productName = '';
         let brandName = '';
         let categoryName = '';
 
-        // Dicionário offline inteligente de EANs brasileiros comuns para resposta instantânea e precisa
         const KNOWN_BARCODES = {
-          '7898636190874': { name: 'Sabonete Facial em Barra Asepxia Antiacne Detox / Carvão Ativado 80g', group: 'Perfumaria & Higiene' },
-          '7899674026958': { name: 'Massageador Above Doutorflan Ice Frasco 100ml Spray', group: 'Saúde & Cuidados' },
+          // Elétrica & Iluminação
           '7891001001': { name: 'Disjuntor DIN Bipolar 32A Curva C', group: 'Elétrica & Automação' },
           '7891001002': { name: 'Cabo Flexível 2,5mm² Rolo 100m Preto', group: 'Cabos & Fios' },
           '7891001003': { name: 'Refletor LED Holofote 100W IP66', group: 'Iluminação LED' },
           '7891001004': { name: 'Multímetro Digital Profissional True RMS', group: 'Ferramentas' },
+          '7897613200123': { name: 'Cabo Flexível 4,0mm² Rolo 100m Azul - Pirelli / Prysmian', group: 'Cabos & Fios' },
+          '7897613200154': { name: 'Cabo Flexível 6,0mm² Rolo 100m Verde - Pirelli / Prysmian', group: 'Cabos & Fios' },
+          '7891435012211': { name: 'Disjuntor DIN Unipolar 20A Curva C - Schneider Electric', group: 'Elétrica & Automação' },
+          '7891435012235': { name: 'Disjuntor DIN Bipolar 40A Curva C - Siemens', group: 'Elétrica & Automação' },
+          '7891960042100': { name: 'Tubo PVC Soldável 25mm (3/4) 6m - Tigre', group: 'Hidráulica & Tubos' },
+          '7891960045200': { name: 'Joelho 90° PVC Soldável 25mm - Tigre', group: 'Conexões Hidráulicas' },
+          '7891960048300': { name: 'Luva PVC Soldável 25mm - Tigre', group: 'Conexões Hidráulicas' },
+          '7891960051400': { name: 'Caixa de Descarga Plastica 9L Branca - Astra / Tigre', group: 'Hidráulica' },
+          '7898231901102': { name: 'Fita Isolante Antichamas 19mm x 20m - 3M Temflex', group: 'Elétrica & Acessórios' },
+          '7897395011011': { name: 'Painel Plafoniere LED Redondo de Sobrepor 18W Frio - Avant', group: 'Iluminação LED' },
+          '7897395011042': { name: 'Lâmpada LED Bulbo 9W Bivolt Luz Branca - Ourolux / Elgin', group: 'Iluminação LED' },
+          '7898555120109': { name: 'Torneira para Pia de Cozinha Bica Móvel Parede ABS - Fabrilis', group: 'Hidráulica & Registros' },
+          '7891222041103': { name: 'Cimento CP II-Z-32 Saco 50kg - Votoran / CSN', group: 'Construção & Argamassa' },
+          '7891222045507': { name: 'Argamassa Colacem AC-I para Cerâmica Interna 20kg - Quartzolit', group: 'Construção & Argamassa' },
+          // Tintas, Sprays & Materiais
+          '7899674039934': { name: 'Tinta Spray Uso Geral Verniz Brilhante 250ml - Chemicolor', group: 'Tintas & Spray' },
+          // Supermercado & Geral
+          '7898636190874': { name: 'Sabonete Facial em Barra Asepxia Antiacne Detox 80g', group: 'Perfumaria & Higiene' },
+          '7899674026958': { name: 'Massageador Above Doutorflan Ice Frasco 100ml Spray', group: 'Saúde & Cuidados' },
           '7894900011517': { name: 'Refrigerante Coca-Cola 2 Litros Pet', group: 'Bebidas & Alimentos' },
-          '7896004701918': { name: 'Cerveja Heineken Lata 350ml', group: 'Bebidas' }
+          '7896004701918': { name: 'Cerveja Heineken Lata 350ml', group: 'Bebidas' },
+          '7891010010010': { name: 'Leite Condensado Moça Nestlé Lata 395g', group: 'Mercearia' },
+          '7891000100103': { name: 'Café Torrado e Moído Pilão Vácuo 500g', group: 'Mercearia' },
+          '7896003701112': { name: 'Detergrente Líquido Clear Ypê 500ml', group: 'Limpeza' },
+          '7891150036124': { name: 'Sabão em Pó OMO Lavagem Perfeita 1kg', group: 'Limpeza' }
         };
 
         if (KNOWN_BARCODES[code]) {
           productName = KNOWN_BARCODES[code].name;
           categoryName = KNOWN_BARCODES[code].group;
         } else {
-          // Consulta online Open Food Facts e UPCItemDB
           const endpoints = [
             `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`,
             `https://br.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`,
@@ -1565,7 +1687,7 @@
           for (const ep of endpoints) {
             try {
               const controller = new AbortController();
-              const timeout = setTimeout(() => controller.abort(), 6000);
+              const timeout = setTimeout(() => controller.abort(), 4000);
               const res = await fetch(ep, { signal: controller.signal });
               clearTimeout(timeout);
               if (res.ok) {
@@ -1580,24 +1702,36 @@
               }
             } catch {}
           }
+        }
 
-          if (!productName) {
-            try {
-              const res2 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`)}`);
-              if (res2.ok) {
-                const json2 = await res2.json();
-                if (json2 && json2.items && json2.items.length > 0) {
-                  productName = json2.items[0].title || '';
-                  brandName = json2.items[0].brand || '';
-                  categoryName = json2.items[0].category || '';
-                }
+        // Se ainda não encontrou na base local ou OFF, consulta em tempo real via Gemini com Google Search Grounding
+        if (!productName && code) {
+          try {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+            const payloadGemini = {
+              contents: [{ role: 'user', parts: [{ text: `Qual é o nome exato e marca do produto brasileiro com o código de barras EAN/GTIN ${code}? Responda apenas com o nome completo e marca do produto (ex: Tinta Spray Chemicolor Verniz Brilhante 250ml). Se desconhecido, responda Código ${code}.` }] }],
+              tools: [{ "google_search": {} }],
+              systemInstruction: { parts: [{ text: "Você é um especialista em catálogo de produtos e códigos de barras no Brasil. Retorne apenas o nome completo do produto." }] }
+            };
+            const resp = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payloadGemini)
+            });
+            if (resp.ok) {
+              const resJson = await resp.json();
+              const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text && !text.includes('Código')) {
+                productName = text.trim().replace(/^["']|["']$/g, '');
+                categoryName = 'Catálogo Online Geral';
               }
-            } catch {}
-          }
+            }
+          } catch {}
+        }
 
-          if (!productName) {
-            productName = `Produto Referente ao EAN ${code}`;
-          }
+        if (!productName) {
+          productName = `Produto Cadastrado via EAN ${code}`;
         }
 
         let finalName = String(productName).trim();
@@ -1606,7 +1740,7 @@
         }
 
         document.getElementById('prod-name').value = finalName;
-        if (categoryName) {
+        if (categoryName && !document.getElementById('prod-group').value) {
           document.getElementById('prod-group').value = categoryName
             .replace(/^[a-z]{2,3}:/i, '')
             .replace(/[-_]/g, ' ')
@@ -1618,15 +1752,15 @@
         showToast('Produto identificado!');
       } catch (error) {
         console.error('Erro na consulta online:', error);
-        document.getElementById('prod-name').value = `Produto Referente ao EAN ${code}`;
-        setBarcodeLookupStatus('Código preenchido automaticamente.', 'success');
+        document.getElementById('prod-name').value = `Produto EAN ${code}`;
+        setBarcodeLookupStatus('Código preenchido.', 'success');
         showToast('Código identificado!');
       } finally {
         barcodeLookupInProgress = false;
         if (button) {
           button.disabled = false;
           button.textContent = 'Buscar';
-          button.classList.add('opacity-60', 'cursor-not-allowed');
+          button.classList.remove('opacity-60', 'cursor-not-allowed');
         }
       }
     }
@@ -1728,9 +1862,48 @@
     function generatePDVQuotePDF() {
       if (cartItems.length === 0) return showToast('Adicione itens.', true);
       const total = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      const storeName = appState.store?.name || 'Eletro Shop';
+      const storeCnpj = appState.store?.cnpj || '';
       const win = window.open('', '_blank');
-      win.document.write(`<html><head><title>Orçamento</title></head><body style="font-family:Arial;padding:20px;"><h2>Orçamento • ${appState.store.name}</h2><hr/><ul>${cartItems.map(i=>`<li>${i.qty}x ${i.name} - ${formatBRL(i.price*i.qty)}</li>`).join('')}</ul><h3>Total: ${formatBRL(total)}</h3><script>window.print();<\/script></body></html>`);
+      const html = `
+        <html>
+          <head>
+            <title>Orçamento • ${storeName}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 25px; color: #111; }
+              .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 15px; }
+              .header h2 { margin: 0; }
+              .header p { margin: 3px 0; font-size: 12px; color: #555; }
+              ul { padding-left: 20px; }
+              li { margin-bottom: 6px; font-size: 13px; }
+              .total { margin-top: 20px; font-size: 16px; font-weight: bold; text-align: right; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h2>${storeName}</h2>
+              ${storeCnpj ? `<p>CNPJ: ${storeCnpj}</p>` : ''}
+              <p>Orçamento de Mercadorias</p>
+              <p>Data: ${new Date().toLocaleString('pt-BR')}</p>
+            </div>
+            <ul>${cartItems.map(i=>`<li>${i.qty}x ${i.name} — Unit: ${formatBRL(i.price)} — Subtotal: ${formatBRL(i.price*i.qty)}</li>`).join('')}</ul>
+            <div class="total">Total do Orçamento: ${formatBRL(total)}</div>
+          
+<button id="eletro-ai-launcher" type="button" aria-label="Abrir Eletro IA" title="Eletro IA" onclick="toggleEletroAI()">
+<svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a7 7 0 0 0-7 7v4a3 3 0 0 0 3 3h1v-6H7a5 5 0 0 1 10 0h-2v6h1a3 3 0 0 0 3-3v-4a7 7 0 0 0-7-7Z"/><path d="M9 20h6M12 17v3"/></svg></button>
+<section id="eletro-ai-panel" aria-label="Assistente Eletro IA">
+ <header class="eai-head"><div class="eai-avatar">✦</div><div style="flex:1"><div style="font-weight:800;font-size:14px">Eletro IA</div><div style="font-size:11px;color:#bfdbfe">Assistente de produtos • Funcionários</div></div><button type="button" onclick="toggleEletroAI(false)" aria-label="Fechar" style="background:none;border:0;color:white;font-size:24px;cursor:pointer">×</button></header>
+ <div id="eai-messages" class="eai-messages"><div class="eai-msg bot">Olá! Sou a Eletro IA. Posso ajudar com características, compatibilidade, comparação e alternativas dos produtos cadastrados na loja. O que você gostaria de saber?</div></div>
+ <div class="eai-compose"><input id="eai-input" maxlength="1200" placeholder="Pergunte sobre um produto..." onkeydown="if(event.key==='Enter')sendEletroAI()"><button id="eai-send" type="button" onclick="sendEletroAI()">Enviar</button></div>
+ <div class="eai-note">Respostas podem precisar de confirmação no manual do fabricante. Preços e estoque vêm do cadastro do ERP.</div>
+</section>
+
+</body>
+        </html>
+      `;
+      win.document.write(html);
       win.document.close();
+      setTimeout(() => win.print(), 400);
     }
 
     function renderFinanceiroView() {
@@ -1839,13 +2012,141 @@
         const sum = appState.sales.filter(s => String(s.payment).toLowerCase() === m.toLowerCase()).reduce((a, b) => a + Number(b.total || 0), 0);
         return `<div class="erp-card p-5"><span class="text-xs font-semibold text-slate-400">${m}</span><div class="text-xl font-extrabold text-white mt-1">${formatBRL(sum)}</div></div>`;
       }).join('');
+
+      const historyBody = document.getElementById('sales-history-table-body');
+      if (historyBody) {
+        const canManage = isManagerOrMaster();
+        if (appState.sales.length === 0) {
+          historyBody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-500">Nenhuma venda registrada até o momento.</td></tr>`;
+        } else {
+          historyBody.innerHTML = appState.sales.map(sale => `
+            <tr class="hover:bg-slate-800/40">
+              <td class="py-3 px-3 font-mono text-slate-300"><div>${sale.id}</div><div class="text-[10px] text-slate-500">${sale.date}</div></td>
+              <td class="py-3 px-3 font-semibold text-white">${sale.customer || 'Consumidor Final'}</td>
+              <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[11px]">${sale.payment}</span></td>
+              <td class="py-3 px-3 text-slate-400">${(sale.items || []).map(i => `${i.qty}x ${i.name}`).join(', ')}</td>
+              <td class="py-3 px-3 text-right font-bold text-emerald-400">${formatBRL(sale.total)}</td>
+              <td class="py-3 px-3 text-right">
+                ${canManage ? `<button onclick="deleteSale('${sale.id}')" class="text-red-400 hover:underline font-semibold">Excluir</button>` : '-'}
+              </td>
+            </tr>
+          `).join('');
+        }
+      }
+    }
+
+    function deleteSale(saleId) {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      appState.sales = appState.sales.filter(s => s.id !== saleId);
+      appState.transactions = appState.transactions.filter(t => !t.desc.includes(saleId));
+      saveState();
+      renderAllViews();
+      showToast('Venda excluída e faturamento sincronizado com sucesso!');
     }
 
     function printSalesReportPDF() {
       const totalSales = appState.sales.reduce((a, b) => a + Number(b.total || 0), 0);
+      const storeName = appState.store?.name || 'Eletro Shop';
+      const storeCnpj = appState.store?.cnpj || '00.000.000/0001-00';
+      const storeBadgeColor = appState.store?.badgeColor || '#3b82f6';
       const win = window.open('', '_blank');
-      win.document.write(`<html><head><title>Fechamento</title></head><body style="font-family:Arial;padding:20px;"><h2>Fechamento de Caixa • ${appState.store.name}</h2><p>Total: ${formatBRL(totalSales)}</p><script>window.print();<\/script></body></html>`);
+      const html = `
+        <html>
+          <head>
+            <title>Relatório Executivo de Vendas • ${storeName}</title>
+            <style>
+              body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; background: #fff; margin: 0; }
+              .report-container { max-width: 800px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 35px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+              .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid ${storeBadgeColor}; padding-bottom: 20px; margin-bottom: 25px; }
+              .header-left h1 { margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; }
+              .header-left p { margin: 4px 0 0 0; font-size: 13px; color: #64748b; }
+              .header-right { text-align: right; font-size: 12px; color: #64748b; }
+              .badge { display: inline-block; padding: 4px 12px; background: ${storeBadgeColor}15; color: ${storeBadgeColor}; border: 1px solid ${storeBadgeColor}40; border-radius: 20px; font-size: 11px; font-weight: bold; margin-bottom: 6px; }
+              .section-title { font-size: 15px; font-weight: 700; color: #334155; margin-bottom: 12px; border-left: 4px solid ${storeBadgeColor}; padding-left: 8px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 25px; font-size: 13px; }
+              th, td { border: 1px solid #e2e8f0; padding: 11px 14px; text-align: left; }
+              th { background-color: #f8fafc; font-weight: 700; color: #475569; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
+              td { color: #334155; }
+              .text-right { text-align: right; }
+              .summary-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+              .summary-title { font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+              .summary-value { font-size: 22px; font-weight: 800; color: #0f172a; }
+              .signatures { display: flex; justify-content: space-between; margin-top: 70px; page-break-inside: avoid; }
+              .sig-box { width: 44%; text-align: center; border-top: 2px solid #cbd5e1; padding-top: 10px; font-size: 12px; color: #334155; }
+              .sig-box strong { display: block; font-size: 13px; color: #0f172a; margin-bottom: 3px; }
+              @media print {
+                body { padding: 0; background: #fff; }
+                .report-container { border: none; box-shadow: none; padding: 0; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="report-container">
+              <div class="header">
+                <div class="header-left">
+                  <span class="badge">Relatório Executivo Oficial</span>
+                  <h1>${storeName}</h1>
+                  <p>CNPJ: ${storeCnpj}</p>
+                </div>
+                <div class="header-right">
+                  <p><strong>Data de Emissão:</strong></p>
+                  <p>${new Date().toLocaleString('pt-BR')}</p>
+                </div>
+              </div>
+
+              <div class="section-title">Detalhamento por Forma de Pagamento</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Forma de Pagamento</th>
+                    <th class="text-right">Total Transacionado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Pix</strong></td>
+                    <td class="text-right">${formatBRL(appState.sales.filter(s => String(s.payment).toLowerCase() === 'pix').reduce((a,b)=>a+Number(b.total||0),0))}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Cartão de Crédito</strong></td>
+                    <td class="text-right">${formatBRL(appState.sales.filter(s => String(s.payment).toLowerCase() === 'cartão de crédito').reduce((a,b)=>a+Number(b.total||0),0))}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Cartão de Débito</strong></td>
+                    <td class="text-right">${formatBRL(appState.sales.filter(s => String(s.payment).toLowerCase() === 'cartão de débito').reduce((a,b)=>a+Number(b.total||0),0))}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Dinheiro</strong></td>
+                    <td class="text-right">${formatBRL(appState.sales.filter(s => String(s.payment).toLowerCase() === 'dinheiro').reduce((a,b)=>a+Number(b.total||0),0))}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="summary-box">
+                <div>
+                  <div class="summary-title">Faturamento Líquido Consolidado</div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Total de vendas e entradas registradas no período</div>
+                </div>
+                <div class="summary-value">${formatBRL(totalSales)}</div>
+              </div>
+
+              <div class="signatures">
+                <div class="sig-box">
+                  <strong>Gerência Operacional</strong>
+                  <span>Assinatura do Gerente Responsável</span>
+                </div>
+                <div class="sig-box">
+                  <strong>Controle Financeiro / Caixa</strong>
+                  <span>Assinatura do Responsável Financeiro</span>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+      win.document.write(html);
       win.document.close();
+      setTimeout(() => win.print(), 400);
     }
 
     function addEntity(e) {
@@ -1953,6 +2254,41 @@
       renderSalesReport();
       renderEntitiesTable();
       renderCostsTable();
+    }
+
+
+    // Eletro IA: credenciais mantidas somente em memória e revalidadas no servidor.
+    let eletroAICredentials = null;
+    let eletroAIHistory = [];
+    function toggleEletroAI(force) {
+      if (!currentUser) { showToast('Entre no ERP para utilizar a Eletro IA.', true); return; }
+      const panel = document.getElementById('eletro-ai-panel');
+      if (!panel) return;
+      const open = typeof force === 'boolean' ? force : !panel.classList.contains('open');
+      panel.classList.toggle('open', open);
+      if (open) document.getElementById('eai-input')?.focus();
+    }
+    function addEletroAIMessage(text, who='bot') {
+      const box=document.getElementById('eai-messages'); if(!box) return;
+      const el=document.createElement('div'); el.className='eai-msg '+who; el.textContent=text;
+      box.appendChild(el); box.scrollTop=box.scrollHeight;
+    }
+    async function sendEletroAI() {
+      const input=document.getElementById('eai-input'), btn=document.getElementById('eai-send');
+      const question=(input?.value||'').trim();
+      if(!question) return;
+      if(!currentUser){addEletroAIMessage('Sua sessão do ERP não está ativa. Faça login novamente.');return;}
+      if(!eletroAICredentials){addEletroAIMessage('Para ativar a assistência, saia e entre novamente no ERP. A autenticação segura da IA será vinculada ao login.');return;}
+      addEletroAIMessage(question,'user'); input.value=''; btn.disabled=true; btn.textContent='...';
+      const pending=document.createElement('div'); pending.className='eai-msg bot'; pending.textContent='Consultando o catálogo e preparando a resposta...'; document.getElementById('eai-messages').appendChild(pending);
+      try {
+        const response=await fetch('/api/eletro-ia',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:eletroAICredentials.username,password:eletroAICredentials.password,question,history:eletroAIHistory.slice(-8)})});
+        const data=await response.json();
+        if(!response.ok) throw new Error(data.error||'Não foi possível consultar a Eletro IA.');
+        pending.textContent=data.answer||'Não consegui formular uma resposta.';
+        eletroAIHistory.push({role:'user',content:question},{role:'assistant',content:pending.textContent});
+      } catch(err) { pending.textContent='Não consegui responder agora: '+err.message; }
+      finally {btn.disabled=false;btn.textContent='Enviar';document.getElementById('eai-messages').scrollTop=999999;input.focus();}
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
