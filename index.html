@@ -1227,10 +1227,12 @@
         </div>
         <div class="flex gap-2">
           <input type="text" id="prod-sku" placeholder="Bipe ou digite o código EAN/GTIN" class="erp-input w-full px-3 py-2 text-xs font-mono" oninput="scheduleBarcodeLookup(this.value)" onkeydown="if(event.key === 'Enter'){event.preventDefault();lookupBarcodeOnline();}" onblur="lookupBarcodeOnline()" />
-          <button type="button" id="btn-lookup-barcode" onclick="lookupBarcodeOnline()" class="btn-accent px-3 py-2 text-xs shrink-0">Buscar</button>
+          <button type="button" id="btn-lookup-barcode" onclick="lookupBarcodeOnline()" class="btn-accent px-3 py-2 text-xs shrink-0 flex items-center gap-1">
+            <span>Buscar IA</span>
+          </button>
         </div>
-        <p id="barcode-lookup-status" role="status" aria-live="polite" class="text-[11px] text-slate-400">Digite ou escaneie um EAN/GTIN para identificar o produto e fabricante.</p>
-        <div id="barcode-ai-suggestions" class="hidden flex flex-wrap gap-1.5 pt-1"></div>
+        <p id="barcode-lookup-status" role="status" aria-live="polite" class="text-[11px] text-slate-400">Digite ou escaneie um EAN/GTIN para identificar o produto com IA online.</p>
+        <div id="barcode-ai-suggestions" class="hidden space-y-2 pt-1.5 border-t border-slate-800/80"></div>
       </div>
 
       <form onsubmit="saveProduct(event)" class="space-y-3">
@@ -2054,187 +2056,294 @@
         input?.focus();
         return;
       }
-
       if (!Array.isArray(appState.productGroups)) {
         appState.productGroups = [...DEFAULT_PRODUCT_GROUPS];
       }
-
-      const existing = getAllProductGroups().find(g => g.toLowerCase() === rawName.toLowerCase());
-      if (existing) {
-        renderProductGroupOptions(existing);
-        userManuallySelectedGroup = true;
-        toggleNewProductGroupBox(false);
-        showToast(`Grupo "${existing}" já estava cadastrado e foi selecionado!`);
-        return;
+      const exists = getAllProductGroups().some(g => g.toLowerCase() === rawName.toLowerCase());
+      if (!exists) {
+        appState.productGroups.push(rawName);
+        saveState();
       }
-
-      appState.productGroups.push(rawName);
-      saveState();
       renderProductGroupOptions(rawName);
       userManuallySelectedGroup = true;
       toggleNewProductGroupBox(false);
-      showToast(`Grupo/Categoria "${rawName}" criado e salvo!`);
-    }
-
-    function openProductModal(prodId = null) {
-      const prod = prodId ? appState.products.find(p => p.id === prodId) : null;
-      document.getElementById('product-modal-title').textContent = prod ? 'Editar Produto' : 'Cadastrar Produto';
-      document.getElementById('prod-id').value = prod ? prod.id : '';
-      lastBarcodeLookup = '';
-      userManuallySelectedGroup = Boolean(prod);
-      toggleNewProductGroupBox(false);
-      setBarcodeLookupStatus('Digite ou escaneie um EAN/GTIN para identificar o produto e fabricante.', 'info');
-      const sugBox = document.getElementById('barcode-ai-suggestions');
-      if (sugBox) { sugBox.innerHTML = ''; sugBox.classList.add('hidden'); }
-      document.getElementById('prod-sku').value = prod ? (prod.sku || '') : '';
-      document.getElementById('prod-name').value = prod ? prod.name : '';
-      renderProductGroupOptions(prod ? prod.group : 'Elétrica & Automação');
-      document.getElementById('prod-stock').value = prod ? prod.stock : 10;
-      document.getElementById('prod-cost').value = prod ? prod.cost : 0;
-      document.getElementById('prod-price').value = prod ? prod.price : '';
-      openModal('modal-produto');
-    }
-
-    function closeProductModal() { toggleNewProductGroupBox(false); stopBarcodeCamera(); closeModal('modal-produto'); }
-
-    function saveProduct(e) {
-      e.preventDefault();
-      const id = document.getElementById('prod-id').value;
-      const selectedGroup = document.getElementById('prod-group').value.trim();
-      const finalGroup = (!selectedGroup || selectedGroup === '__NEW__') ? 'Geral' : selectedGroup;
-      const item = {
-        id: id || `PRD-${Date.now().toString().slice(-5)}`,
-        sku: document.getElementById('prod-sku').value.trim() || `EAN-${Date.now().toString().slice(-6)}`,
-        name: document.getElementById('prod-name').value.trim(),
-        group: finalGroup,
-        stock: Number(document.getElementById('prod-stock').value || 0),
-        cost: Number(document.getElementById('prod-cost').value || 0),
-        price: Number(document.getElementById('prod-price').value || 0)
-      };
-
-      if (!Array.isArray(appState.productGroups)) appState.productGroups = [...DEFAULT_PRODUCT_GROUPS];
-      if (!getAllProductGroups().some(g => g.toLowerCase() === finalGroup.toLowerCase())) {
-        appState.productGroups.push(finalGroup);
-      }
-
-      if (id) {
-        const idx = appState.products.findIndex(p => p.id === id);
-        if (idx >= 0) appState.products[idx] = item;
-      } else {
-        appState.products.unshift(item);
-      }
-      saveState();
-      renderAllViews();
-      closeProductModal();
-      showToast('Produto salvo com sucesso!');
-    }
-
-    function deleteProduct(id) {
-      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
-      appState.products = appState.products.filter(p => p.id !== id);
-      saveState();
-      renderAllViews();
-      showToast('Produto removido.');
-    }
-
-    async function toggleBarcodeCamera() {
-      const box = document.getElementById('barcode-camera-box');
-      if (!box.classList.contains('hidden')) {
-        stopBarcodeCamera();
-        return;
-      }
-      try {
-        box.classList.remove('hidden');
-        document.getElementById('btn-toggle-camera').textContent = 'Fechar Câmera';
-
-        if (window.ZXing) {
-          window.codeReader = new ZXing.BrowserMultiFormatReader();
-          const videoInputDevices = await window.codeReader.listVideoInputDevices();
-          const selectedDeviceId = videoInputDevices.length > 0 ? videoInputDevices[videoInputDevices.length - 1].deviceId : undefined;
-
-          window.codeReader.decodeFromVideoDevice(selectedDeviceId, 'barcode-video', (result) => {
-            if (result) {
-              const scannedCode = result.getText();
-              document.getElementById('prod-sku').value = scannedCode;
-              showToast(`Código EAN escaneado: ${scannedCode}`);
-              stopBarcodeCamera();
-              lookupBarcodeOnline();
-            }
-          });
-        } else {
-          barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-          const video = document.getElementById('barcode-video');
-          video.srcObject = barcodeStream;
-
-          if ('BarcodeDetector' in window) {
-            const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'qr_code'] });
-            barcodeInterval = setInterval(async () => {
-              try {
-                const codes = await detector.detect(video);
-                if (codes.length > 0) {
-                  const scannedCode = codes[0].rawValue;
-                  document.getElementById('prod-sku').value = scannedCode;
-                  showToast(`Código EAN escaneado: ${scannedCode}`);
-                  stopBarcodeCamera();
-                  lookupBarcodeOnline();
-                }
-              } catch {}
-            }, 300);
-          }
-        }
-      } catch {
-        showToast('Não foi possível acessar a câmera.', true);
-        stopBarcodeCamera();
-      }
-    }
-
-    function stopBarcodeCamera() {
-      clearInterval(barcodeInterval);
-      if (window.codeReader) {
-        try { window.codeReader.reset(); } catch {}
-        window.codeReader = null;
-      }
-      if (barcodeStream) {
-        barcodeStream.getTracks().forEach(t => t.stop());
-        barcodeStream = null;
-      }
-      document.getElementById('barcode-camera-box')?.classList.add('hidden');
-      const btn = document.getElementById('btn-toggle-camera');
-      if (btn) btn.textContent = 'Ler com Câmera';
+      showToast(`Grupo "${rawName}" salvo e selecionado!`);
     }
 
     let barcodeLookupTimer = null;
     let barcodeLookupInProgress = false;
     let lastBarcodeLookup = '';
 
-    function setBarcodeLookupStatus(message, type = 'info') {
+    function setBarcodeLookupStatus(message, tone = 'info') {
       const el = document.getElementById('barcode-lookup-status');
       if (!el) return;
+      el.textContent = message;
       const colors = {
         info: 'text-slate-400',
-        loading: 'text-sky-300',
+        loading: 'text-sky-400',
         success: 'text-emerald-400',
-        warning: 'text-amber-300',
-        error: 'text-red-400'
+        warning: 'text-amber-300'
       };
-      el.className = `text-[11px] ${colors[type] || colors.info}`;
-      el.textContent = message;
+      el.className = `text-[11px] ${colors[tone] || colors.info}`;
     }
 
-    function scheduleBarcodeLookup(value) {
+    function scheduleBarcodeLookup(val) {
       clearTimeout(barcodeLookupTimer);
-      const code = String(value || '').replace(/\s+/g, '');
-      if (![8, 12, 13, 14].includes(code.length) || !/^\d+$/.test(code)) return;
-      barcodeLookupTimer = setTimeout(() => lookupBarcodeOnline(), 600);
+      const clean = String(val || '').trim();
+      if (clean.length < 8) return;
+      barcodeLookupTimer = setTimeout(() => {
+        lookupBarcodeOnline();
+      }, 650);
     }
 
-    function applyBarcodeSuggestion(name, group) {
+    function openProductModal(prodId = '') {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      userManuallySelectedGroup = false;
+      lastBarcodeLookup = '';
+      toggleNewProductGroupBox(false);
+      const sugBox = document.getElementById('barcode-ai-suggestions');
+      if (sugBox) { sugBox.innerHTML = ''; sugBox.classList.add('hidden'); }
+      setBarcodeLookupStatus('Digite ou escaneie um EAN/GTIN para identificar o produto com IA online.', 'info');
+
+      if (prodId) {
+        const p = appState.products.find(item => item.id === prodId);
+        if (!p) return;
+        document.getElementById('product-modal-title').textContent = `Editar Produto (${p.sku || p.id})`;
+        document.getElementById('prod-id').value = p.id;
+        document.getElementById('prod-sku').value = p.sku || '';
+        document.getElementById('prod-name').value = p.name || '';
+        renderProductGroupOptions(p.group || 'Geral');
+        document.getElementById('prod-stock').value = Number(p.stock || 0);
+        document.getElementById('prod-cost').value = Number(p.cost || 0);
+        document.getElementById('prod-price').value = Number(p.price || 0);
+      } else {
+        document.getElementById('product-modal-title').textContent = 'Cadastrar Produto';
+        document.getElementById('prod-id').value = '';
+        document.getElementById('prod-sku').value = '';
+        document.getElementById('prod-name').value = '';
+        renderProductGroupOptions('Elétrica & Automação');
+        document.getElementById('prod-stock').value = 10;
+        document.getElementById('prod-cost').value = 0;
+        document.getElementById('prod-price').value = '';
+      }
+      openModal('modal-produto');
+    }
+
+    function closeProductModal() {
+      stopBarcodeCamera();
+      closeModal('modal-produto');
+    }
+
+    function saveProduct(e) {
+      e.preventDefault();
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      const id = document.getElementById('prod-id').value;
+      const sku = document.getElementById('prod-sku').value.trim() || `789${Date.now().toString().slice(-7)}`;
+      const name = document.getElementById('prod-name').value.trim();
+      const group = document.getElementById('prod-group').value || 'Geral';
+      const stock = Math.max(0, Number(document.getElementById('prod-stock').value || 0));
+      const cost = Math.max(0, Number(document.getElementById('prod-cost').value || 0));
+      const price = Math.max(0, Number(document.getElementById('prod-price').value || 0));
+
+      if (!name || price <= 0) return showToast('Informe o nome e o preço de venda.', true);
+
+      if (id) {
+        const idx = appState.products.findIndex(p => p.id === id);
+        if (idx >= 0) {
+          appState.products[idx] = { ...appState.products[idx], sku, name, group, stock, cost, price };
+        }
+      } else {
+        appState.products.unshift({
+          id: `PRD-${Date.now().toString().slice(-5)}`,
+          sku,
+          name,
+          group,
+          stock,
+          cost,
+          price
+        });
+      }
+
+      saveState();
+      renderAllViews();
+      closeProductModal();
+      showToast('Produto salvo com sucesso!');
+    }
+
+    function deleteProduct(prodId) {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      appState.products = appState.products.filter(p => p.id !== prodId);
+      saveState();
+      renderAllViews();
+      showToast('Produto removido do estoque.');
+    }
+
+    async function toggleBarcodeCamera() {
+      const box = document.getElementById('barcode-camera-box');
+      const video = document.getElementById('barcode-video');
+      const btn = document.getElementById('btn-toggle-camera');
+      if (!box || !video) return;
+
+      if (barcodeStream) {
+        stopBarcodeCamera();
+        return;
+      }
+
+      try {
+        barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = barcodeStream;
+        box.classList.remove('hidden');
+        if (btn) btn.textContent = 'Fechar Câmera';
+
+        if ('BarcodeDetector' in window) {
+          const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'code_128'] });
+          barcodeInterval = setInterval(async () => {
+            try {
+              const codes = await detector.detect(video);
+              if (codes && codes.length > 0 && codes[0].rawValue) {
+                const detected = codes[0].rawValue;
+                document.getElementById('prod-sku').value = detected;
+                stopBarcodeCamera();
+                lookupBarcodeOnline();
+              }
+            } catch {}
+          }, 500);
+        }
+      } catch (err) {
+        showToast('Não foi possível acessar a câmera neste dispositivo.', true);
+      }
+    }
+
+    function stopBarcodeCamera() {
+      if (barcodeInterval) {
+        clearInterval(barcodeInterval);
+        barcodeInterval = null;
+      }
+      if (barcodeStream) {
+        barcodeStream.getTracks().forEach(t => t.stop());
+        barcodeStream = null;
+      }
+      const box = document.getElementById('barcode-camera-box');
+      const btn = document.getElementById('btn-toggle-camera');
+      if (box) box.classList.add('hidden');
+      if (btn) btn.textContent = 'Ler com Câmera';
+    }
+
+    function applyBarcodeSuggestion(name, group, suggestedPrice = null) {
       document.getElementById('prod-name').value = name;
       if (group) {
         renderProductGroupOptions(group);
         userManuallySelectedGroup = true;
       }
-      showToast('Sugestão aplicada!');
+      if (suggestedPrice !== null && !isNaN(Number(suggestedPrice)) && Number(suggestedPrice) > 0) {
+        document.getElementById('prod-price').value = Number(suggestedPrice).toFixed(2);
+      }
+      showToast('Sugestão da IA aplicada ao formulário!');
+    }
+
+    function inferCategoryFromProductName(name) {
+      const n = String(name || '').toLowerCase();
+      if (/(cabo|fio|flex[ií]vel|cord[aã]o|paralelo|pp\b)/.test(n)) return 'Cabos & Fios';
+      if (/(disjuntor|idr|dps|contator|tomada|interruptor|fita isolante|quadro|plugue|extens[aã]o)/.test(n)) return 'Elétrica & Automação';
+      if (/(led|l[aâ]mpada|refletor|plafon|lumin[aá]ria|spot|fita led|holofote)/.test(n)) return 'Iluminação LED';
+      if (/(furadeira|parafusadeira|alicate|chave|mult[ií]metro|trena|martelo|serra|esmerilhadeira|ferramenta)/.test(n)) return 'Ferramentas';
+      if (/(tubo|pvc|joelho|luva|registro|torneira|sif[aã]o|caixa d.?[aá]gua|conex[aã]o|hidr[aá]ulic)/.test(n)) return 'Hidráulica & Conexões';
+      if (/(chuveiro|ducha|resist[eê]ncia|aquecedor)/.test(n)) return 'Chuveiros & Aquecedores';
+      if (/(cimento|argamassa|rejunte|tijolo|areia|massa corrida|gesso)/.test(n)) return 'Construção Civil';
+      if (/(tinta|spray|verniz|pincel|rolo|solvente|thinner|esmalte)/.test(n)) return 'Tintas & Pintura';
+      return 'Geral';
+    }
+
+    function parseGs1CountryAndPrefix(code) {
+      const digits = String(code || '').replace(/\D/g, '');
+      if (digits.length < 8) return { country: 'Código Interno / Curto', companyPrefix: digits };
+      const p3 = digits.slice(0, 3);
+      let country = 'Importado / Internacional';
+      if (p3 === '789' || p3 === '790') country = 'Brasil (GS1 Brasil)';
+      else if (Number(p3) >= 0 && Number(p3) <= 139) country = 'EUA / Canadá (UPC/EAN)';
+      else if (Number(p3) >= 690 && Number(p3) <= 699) country = 'China (GS1 China)';
+      else if (Number(p3) >= 400 && Number(p3) <= 440) country = 'Alemanha';
+      else if (Number(p3) >= 450 && Number(p3) <= 459 || Number(p3) >= 490 && Number(p3) <= 499) country = 'Japão';
+      else if (p3 === '779') country = 'Argentina';
+      return { country, companyPrefix: digits.slice(0, 7) };
+    }
+
+    function renderBarcodeAiPanel({ code, detectedName, brandName, inferredGroup, gs1Info, candidates, notFoundExact }) {
+      const sugBox = document.getElementById('barcode-ai-suggestions');
+      if (!sugBox) return;
+
+      const uniqueCandidates = [];
+      const seen = new Set();
+      (candidates || []).forEach(c => {
+        const key = String(c.name || '').toLowerCase().trim();
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          uniqueCandidates.push(c);
+        }
+      });
+
+      const candidateButtonsHtml = uniqueCandidates.slice(0, 4).map(c => `
+        <button type="button"
+          onclick="applyBarcodeSuggestion('${escapeHtmlStr(c.name)}', '${escapeHtmlStr(c.group || inferredGroup)}', ${c.price || 'null'})"
+          class="w-full text-left px-2.5 py-1.5 rounded-lg bg-slate-950/90 hover:bg-sky-500/20 border border-slate-800 hover:border-sky-500/40 text-[11px] text-slate-200 flex items-center justify-between gap-2 transition">
+          <span class="truncate font-semibold">+ ${escapeHtmlStr(c.name)}</span>
+          <span class="text-[10px] text-sky-400 shrink-0 font-bold">${escapeHtmlStr(c.group || inferredGroup)}</span>
+        </button>
+      `).join('');
+
+      sugBox.innerHTML = `
+        <div class="p-2.5 rounded-xl bg-sky-950/35 border border-sky-500/30 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-sky-300 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+              Assistente IA de Cadastro • ${escapeHtmlStr(gs1Info.country)}
+            </span>
+            <span class="text-[10px] font-mono text-slate-400">Prefixo: ${escapeHtmlStr(gs1Info.companyPrefix)}</span>
+          </div>
+
+          ${notFoundExact ? `
+            <p class="text-[11px] text-amber-200/90 leading-relaxed">
+              Código <strong>${escapeHtmlStr(code)}</strong> sem ficha pública direta nos catálogos abertos. Use a pesquisa rápida da IA abaixo para ver o nome exato do produto ou clique em uma sugestão:
+            </p>
+          ` : `
+            <p class="text-[11px] text-emerald-300 leading-relaxed">
+              IA identificou: <strong>${escapeHtmlStr(detectedName)}</strong>${brandName ? ` (${escapeHtmlStr(brandName)})` : ''} • Categoria sugerida: <strong>${escapeHtmlStr(inferredGroup)}</strong>.
+            </p>
+          `}
+
+          ${candidateButtonsHtml ? `<div class="space-y-1">${candidateButtonsHtml}</div>` : ''}
+
+          <div class="flex flex-wrap gap-1.5 pt-1">
+            <a href="https://www.google.com/search?q=${encodeURIComponent(code)}" target="_blank" rel="noopener noreferrer"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[10px] font-bold text-sky-300">
+              Pesquisar EAN no Google &rarr;
+            </a>
+            <a href="https://lista.mercadolivre.com.br/${encodeURIComponent(code)}" target="_blank" rel="noopener noreferrer"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[10px] font-bold text-amber-300">
+              Buscar no Mercado Livre &rarr;
+            </a>
+            <a href="https://cosmos.bluesoft.com.br/pesquisar?utf8=%E2%9C%93&q=${encodeURIComponent(code)}" target="_blank" rel="noopener noreferrer"
+              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[10px] font-bold text-emerald-300">
+              Catálogo Cosmos GS1 &rarr;
+            </a>
+          </div>
+        </div>
+      `;
+      sugBox.classList.remove('hidden');
+    }
+
+    async function fetchJsonWithTimeout(url, timeoutMs = 4000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        return await res.json();
+      } catch {
+        clearTimeout(timer);
+        return null;
+      }
     }
 
     async function lookupBarcodeOnline() {
@@ -2263,14 +2372,16 @@
       const button = document.getElementById('btn-lookup-barcode');
       if (button) {
         button.disabled = true;
-        button.textContent = 'Buscando...';
+        button.textContent = 'IA Buscando...';
       }
-      setBarcodeLookupStatus('Consultando catálogos e fabricantes brasileiros...', 'loading');
+      setBarcodeLookupStatus('IA consultando bases globais EAN/GTIN, fabricantes e catálogos...', 'loading');
 
       try {
         let productName = '';
         let brandName = '';
         let categoryName = '';
+        const aiCandidates = [];
+        const gs1Info = parseGs1CountryAndPrefix(code);
 
         const KNOWN_BARCODES = {
           '7891001001': { name: 'Disjuntor DIN Bipolar 32A Curva C', group: 'Elétrica & Automação' },
@@ -2302,52 +2413,98 @@
         if (KNOWN_BARCODES[code]) {
           productName = KNOWN_BARCODES[code].name;
           categoryName = KNOWN_BARCODES[code].group;
+          aiCandidates.push({ name: productName, group: categoryName });
         } else {
-          const endpoints = [
-            `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`,
-            `https://br.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`
-          ];
-          for (const ep of endpoints) {
-            try {
-              const controller = new AbortController();
-              const timeout = setTimeout(() => controller.abort(), 3500);
-              const res = await fetch(ep, { signal: controller.signal });
-              clearTimeout(timeout);
-              if (res.ok) {
-                const json = await res.json();
-                if (json && (json.status === 1 || json.status === '1') && json.product) {
-                  const p = json.product;
-                  productName = p.product_name_pt || p.product_name || p.generic_name || '';
-                  brandName = String(p.brands || '').split(',')[0].trim();
-                  categoryName = String(p.categories || '').split(',')[0].trim();
-                  if (productName) break;
+          // Consulta paralela em múltiplas bases abertas de EAN/GTIN
+          const [offBr, offWorld, opff, obf, upcDb] = await Promise.all([
+            fetchJsonWithTimeout(`https://br.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
+            fetchJsonWithTimeout(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
+            fetchJsonWithTimeout(`https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
+            fetchJsonWithTimeout(`https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
+            fetchJsonWithTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`, 4000)
+          ]);
+
+          const offResponses = [offBr, offWorld, opff, obf];
+          for (const json of offResponses) {
+            if (json && (json.status === 1 || json.status === '1') && json.product) {
+              const p = json.product;
+              const foundName = p.product_name_pt || p.product_name || p.generic_name || '';
+              const foundBrand = String(p.brands || '').split(',')[0].trim();
+              const foundCat = String(p.categories || '').split(',')[0].trim();
+              if (foundName) {
+                if (!productName) {
+                  productName = foundName;
+                  brandName = foundBrand;
+                  categoryName = foundCat;
                 }
+                const fullLabel = foundBrand && !foundName.toLowerCase().includes(foundBrand.toLowerCase())
+                  ? `${foundBrand} ${foundName}`
+                  : foundName;
+                aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
               }
-            } catch {}
+            }
+          }
+
+          if (upcDb && Array.isArray(upcDb.items) && upcDb.items.length > 0) {
+            upcDb.items.forEach(item => {
+              const title = String(item.title || '').trim();
+              const brand = String(item.brand || '').trim();
+              if (title) {
+                if (!productName) {
+                  productName = title;
+                  brandName = brand;
+                  categoryName = item.category || '';
+                }
+                const fullLabel = brand && !title.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${title}` : title;
+                aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
+              }
+            });
+          }
+
+          // Fallback inteligente via DuckDuckGo Instant Answer para códigos não catalogados nas APIs acima
+          if (!productName) {
+            const ddg = await fetchJsonWithTimeout(`https://api.duckduckgo.com/?q=${encodeURIComponent(code)}&format=json&no_html=1&skip_disambig=1`, 3500);
+            if (ddg && (ddg.Heading || ddg.AbstractText)) {
+              const ddgTitle = String(ddg.Heading || '').trim();
+              if (ddgTitle && ddgTitle !== code) {
+                productName = ddgTitle;
+                aiCandidates.push({ name: ddgTitle, group: inferCategoryFromProductName(ddgTitle) });
+              }
+            }
           }
         }
 
+        const prefix7 = code.slice(0, 7);
+        const matchedManufacturer = GS1_PREFIX_BRANDS[prefix7];
+        let notFoundExact = false;
+
         if (!productName) {
-          const prefix7 = code.slice(0, 7);
-          const matchedManufacturer = GS1_PREFIX_BRANDS[prefix7];
+          notFoundExact = true;
           if (matchedManufacturer) {
-            productName = `${matchedManufacturer.brand} (EAN ${code})`;
+            brandName = matchedManufacturer.brand;
+            productName = `${matchedManufacturer.brand} - Cód. ${code}`;
             categoryName = matchedManufacturer.group;
-            if (sugBox && matchedManufacturer.samples) {
-              sugBox.innerHTML = matchedManufacturer.samples.map(s => `
-                <button type="button" onclick="applyBarcodeSuggestion('${escapeHtmlStr(s)}', '${escapeHtmlStr(matchedManufacturer.group)}')"
-                  class="px-2 py-1 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/35 text-[10px] font-semibold text-sky-300">
-                  + ${escapeHtmlStr(s)}
-                </button>
-              `).join('');
-              sugBox.classList.remove('hidden');
-            }
-          } else if (code.startsWith('789') || code.startsWith('790')) {
-            productName = `Produto Nacional EAN ${code}`;
-            categoryName = 'Geral';
+            (matchedManufacturer.samples || []).forEach(s => {
+              aiCandidates.push({ name: s, group: matchedManufacturer.group });
+            });
           } else {
-            productName = `Produto Cadastrado via EAN ${code}`;
+            productName = gs1Info.country.includes('Brasil')
+              ? `Produto Nacional EAN ${code}`
+              : `Produto Importado EAN ${code}`;
+            categoryName = 'Geral';
           }
+        } else if (matchedManufacturer && matchedManufacturer.samples) {
+          matchedManufacturer.samples.forEach(s => {
+            aiCandidates.push({ name: s, group: matchedManufacturer.group });
+          });
+        }
+
+        // Busca também produtos similares já cadastrados na loja para ajudar na padronização
+        if (brandName) {
+          appState.products
+            .filter(p => p.name.toLowerCase().includes(brandName.toLowerCase()))
+            .slice(0, 2)
+            .forEach(p => aiCandidates.push({ name: p.name, group: p.group, price: p.price }));
         }
 
         let finalName = String(productName).trim();
@@ -2355,24 +2512,42 @@
           finalName = `${brandName} ${finalName}`;
         }
 
+        const inferredGroup = categoryName
+          ? (categoryName.replace(/^[a-z]{2,3}:/i, '').replace(/[-_]/g, ' ').trim() || inferCategoryFromProductName(finalName))
+          : inferCategoryFromProductName(finalName);
+
         document.getElementById('prod-name').value = finalName;
-        if (categoryName && !userManuallySelectedGroup) {
-          const cleanCategory = categoryName.replace(/^[a-z]{2,3}:/i, '').replace(/[-_]/g, ' ').trim();
-          if (cleanCategory) renderProductGroupOptions(cleanCategory);
+        if (inferredGroup && !userManuallySelectedGroup) {
+          renderProductGroupOptions(inferredGroup);
         }
 
+        renderBarcodeAiPanel({
+          code,
+          detectedName: finalName,
+          brandName,
+          inferredGroup: inferCategoryFromProductName(finalName) !== 'Geral' ? inferCategoryFromProductName(finalName) : inferredGroup,
+          gs1Info,
+          candidates: aiCandidates,
+          notFoundExact
+        });
+
         lastBarcodeLookup = code;
-        setBarcodeLookupStatus('Identificação concluída! Confira o nome e informe o preço de venda.', 'success');
-        showToast('Código identificado!');
+        if (notFoundExact) {
+          setBarcodeLookupStatus('Código sem ficha direta — painel IA aberto com origem GS1 e busca rápida online.', 'warning');
+          showToast('Use os atalhos da IA para confirmar o nome exato do produto.');
+        } else {
+          setBarcodeLookupStatus('IA identificou o produto online! Confira o nome, grupo e informe o preço.', 'success');
+          showToast('Produto identificado pela IA!');
+        }
       } catch (err) {
         console.error(err);
         document.getElementById('prod-name').value = `Produto EAN ${code}`;
-        setBarcodeLookupStatus('Código preenchido.', 'info');
+        setBarcodeLookupStatus('Código preenchido. Informe os dados do produto.', 'info');
       } finally {
         barcodeLookupInProgress = false;
         if (button) {
           button.disabled = false;
-          button.textContent = 'Buscar';
+          button.textContent = 'Buscar IA';
         }
       }
     }
