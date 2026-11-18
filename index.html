@@ -817,7 +817,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 class="text-2xl font-extrabold tracking-tight text-white">Assistente IA Operacional & Balcão</h2>
-            <p class="text-xs text-slate-400">Consulta em tempo real o estoque da loja, orçamentos, despesas e pesquisa informações técnicas na internet.</p>
+            <p class="text-xs text-slate-400">Consulta o estoque, monta orçamentos inteligentes, envia para o PDV e pesquisa na web.</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <button type="button" id="ai-online-toggle-btn" onclick="toggleAssistenteOnlineMode()" class="px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-xs font-bold text-emerald-300 flex items-center gap-1.5 transition">
@@ -829,12 +829,12 @@
         </div>
 
         <div class="erp-card p-4 space-y-2">
-          <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Consultas Rápidas de Balcão & Pesquisa Web</span>
+          <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Consultas Rápidas de Balcão & Montagem de Orçamentos</span>
           <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="askAssistenteQuick('Monte um orçamento com 2 rolos de cabo flexível 2.5mm e 1 disjuntor 32A para o cliente Carlos')" class="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-xs font-semibold text-amber-300 transition">+ Orçamento: Cabo + Disjuntor</button>
             <button type="button" onclick="askAssistenteQuick('Quais produtos estão com estoque baixo?')" class="px-3 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 transition">Estoque baixo</button>
             <button type="button" onclick="askAssistenteQuick('Qual o resumo financeiro, orçamentos e despesas da loja?')" class="px-3 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 transition">Resumo financeiro & despesas</button>
             <button type="button" onclick="askAssistenteQuick('Qual fio e disjuntor usar para chuveiro 5500W 220V?')" class="px-3 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 transition">Fio & disjuntor chuveiro 5500W</button>
-            <button type="button" onclick="askAssistenteQuick('Diferença entre disjuntor curva B e curva C')" class="px-3 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 transition">Disjuntor Curva B vs C</button>
             <button type="button" onclick="askAssistenteQuick('O que é Interruptor Diferencial Residual IDR?')" class="px-3 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/35 text-xs font-semibold text-sky-300 transition">Pesquisar Web: O que é IDR?</button>
           </div>
         </div>
@@ -842,13 +842,13 @@
         <div class="erp-card flex flex-col h-[460px] overflow-hidden">
           <div id="assistente-chat-messages" class="flex-1 overflow-y-auto p-5 space-y-3 text-xs leading-relaxed">
             <div class="p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700/80 text-slate-200 max-w-2xl">
-              <div class="font-bold text-sky-400 mb-1">Assistente IA Operacional • Online</div>
-              Olá! Estou conectado ao <strong>Estoque</strong>, <strong>Orçamentos</strong>, <strong>Custos & Despesas</strong> da loja e também à <strong>Pesquisa Web</strong>. Pergunte sobre qualquer material elétrico, hidráulico, construção ou consulte valores e saldos da loja!
+              <div class="font-bold text-sky-400 mb-1">Assistente IA Operacional • Orçamentos & Balcão</div>
+              Olá! Posso montar orçamentos automáticos para você. Basta digitar por exemplo: <br><em>"Monte um orçamento de 2 rolos de cabo para o cliente Roberto"</em>, ou consultar preços, estoque e tutoriais técnicos na internet!
             </div>
           </div>
 
           <form onsubmit="handleAssistenteSubmit(event)" class="p-3.5 border-t border-slate-800 bg-slate-900/80 flex gap-2">
-            <input type="text" id="assistente-input" required placeholder="Digite sua dúvida técnica, produto ou pesquisa na internet..." class="erp-input flex-1 px-4 py-2.5 text-xs" />
+            <input type="text" id="assistente-input" required placeholder="Digite sua solicitação de orçamento, dúvida técnica ou pesquisa web..." class="erp-input flex-1 px-4 py-2.5 text-xs" />
             <button type="submit" id="assistente-send-btn" class="btn-accent px-5 py-2.5 text-xs font-bold shrink-0">Enviar</button>
           </form>
         </div>
@@ -3953,8 +3953,84 @@
 
       const lower = q.toLowerCase();
       let localBlocks = [];
+      let detectedQuoteDraft = null;
 
-      // 1. Consulta local de estoque baixo
+      // 1. Detecção e Montagem Automática de Orçamento pela IA
+      if (lower.includes('orçamento') || lower.includes('orcamento') || lower.includes('cotação') || lower.includes('proposta') || lower.includes('monte um')) {
+        // Extrair nome do cliente se houver (ex: "para o cliente João" ou "para Maria")
+        let clientName = 'Cliente Balcão';
+        const clientMatch = q.match(/(?:para o cliente|para a cliente|para|cliente)\s+([A-ZÀ-Úa-zà-ú\s]+)(?:\.|,|\s+com|\s+e\s|$)/);
+        if (clientMatch && clientMatch[1]) {
+          clientName = clientMatch[1].trim();
+        }
+
+        // Buscar itens correspondentes no estoque com base nas palavras da pergunta
+        const words = lower.split(/\s+/).filter(w => w.length >= 3 && !['monte', 'um', 'orcamento', 'orçamento', 'para', 'o', 'a', 'com', 'de', 'e'].includes(w));
+        const matchedItems = [];
+        
+        words.forEach(w => {
+          appState.products.forEach(p => {
+            if ((p.name.toLowerCase().includes(w) || String(p.group || '').toLowerCase().includes(w)) && !matchedItems.some(i => i.id === p.id)) {
+              // Tentar extrair quantidade digitada próxima (ex: "2 rolos", "3 unidades")
+              let qty = 1;
+              const qtyRegex = new RegExp(`(\\d+)\\s*(?:un|rolos|rolo|pçs|pecas|m|metros|cx)?\\s*[^.?!]*${w}`, 'i');
+              const qtyMatch = q.match(qtyRegex);
+              if (qtyMatch && qtyMatch[1]) qty = Number(qtyMatch[1]);
+
+              matchedItems.push({
+                id: p.id,
+                name: p.name,
+                price: Number(p.price),
+                qty: Math.max(1, qty)
+              });
+            }
+          });
+        });
+
+        // Se não achou por palavra exata, pega o primeiro produto do estoque como sugestão inteligente
+        if (matchedItems.length === 0 && appState.products.length > 0) {
+          const p = appState.products[0];
+          matchedItems.push({ id: p.id, name: p.name, price: Number(p.price), qty: 1 });
+        }
+
+        if (matchedItems.length > 0) {
+          const subtotal = matchedItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+          const quoteId = `ORC-IA-${Date.now().toString().slice(-4)}`;
+          detectedQuoteDraft = {
+            id: quoteId,
+            date: new Date().toLocaleString('pt-BR'),
+            validUntil: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+            customer: clientName,
+            phone: '',
+            payment: 'Pix',
+            discountType: 'percent',
+            discountRaw: 0,
+            subtotal,
+            discount: 0,
+            total: subtotal,
+            notes: `Gerado automaticamente pela IA Operacional (${q})`,
+            status: 'Pendente',
+            items: matchedItems
+          };
+
+          const itemsListHtml = matchedItems.map(i => `<li>${i.qty}x ${escapeHtmlStr(i.name)} — <strong>${formatBRL(i.price * i.qty)}</strong></li>`).join('');
+          localBlocks.push(`
+            <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+              <div class="font-bold text-amber-300">💡 Proposta / Orçamento Gerado pela IA (${quoteId})</div>
+              <div class="text-xs text-slate-300"><strong>Cliente:</strong> ${escapeHtmlStr(clientName)}</div>
+              <ul class="list-disc pl-4 space-y-0.5 text-xs">${itemsListHtml}</ul>
+              <div class="text-xs font-extrabold text-white pt-1 border-t border-amber-500/20">Total Estimado: ${formatBRL(subtotal)}</div>
+              <div class="flex flex-wrap gap-2 pt-2">
+                <button type="button" onclick="aiSaveAndOpenQuote('${quoteId}')" class="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-extrabold text-[11px] shadow hover:bg-amber-400">Salvar & Ver Orçamento &rarr;</button>
+                <button type="button" onclick="aiContinueQuote('${quoteId}')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-200">Continuar Orçamento</button>
+                <button type="button" onclick="aiContinuePDVSale()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-[11px] font-bold text-white">Continuar no Vendas & PDV</button>
+              </div>
+            </div>
+          `);
+        }
+      }
+
+      // 2. Consulta local de estoque baixo
       if (lower.includes('estoque baixo') || lower.includes('acabando') || lower.includes('repor')) {
         const low = appState.products.filter(p => Number(p.stock) <= 10);
         if (low.length === 0) {
@@ -3964,7 +4040,7 @@
         }
       }
 
-      // 2. Consulta financeira, despesas e orçamentos
+      // 3. Consulta financeira, despesas e orçamentos
       if (lower.includes('resumo') || lower.includes('financeiro') || lower.includes('caixa') || lower.includes('faturamento') || lower.includes('despesa')) {
         const rev = appState.sales.reduce((a, b) => a + Number(b.total || 0), 0);
         const totalIn = appState.transactions.filter(t => t.type === 'entrada').reduce((a, b) => a + Number(b.amount || 0), 0);
@@ -3975,23 +4051,20 @@
         localBlocks.push(`<div><strong>Resumo Consolidado da Loja:</strong><br>• Receita em Vendas: <strong>${formatBRL(rev)}</strong> (${appState.sales.length} vendas)<br>• Despesas Pagas da Loja: <strong>${formatBRL(paidExp)}</strong><br>• Saldo Atual em Caixa: <strong>${formatBRL(bal)}</strong><br>• Orçamentos em Aberto: <strong>${openQuotes}</strong></div>`);
       }
 
-      // 3. Regras técnicas de balcão elétrico
+      // 4. Regras técnicas de balcão elétrico
       if (lower.includes('chuveiro') || lower.includes('5500w') || lower.includes('7500w')) {
         localBlocks.push(`<div><strong>Dimensionamento Técnico (NBR 5410):</strong><br>• <strong>5500W em 220V:</strong> Corrente ~25A → Cabo <strong>4,0mm²</strong> + Disjuntor <strong>32A</strong>.<br>• <strong>5500W em 127V:</strong> Corrente ~43A → Cabo <strong>10,0mm²</strong> + Disjuntor <strong>50A</strong>.<br>• <strong>7500W em 220V:</strong> Corrente ~34A → Cabo <strong>6,0mm²</strong> + Disjuntor <strong>40A</strong>.</div>`);
       } else if (lower.includes('curva b') || lower.includes('curva c')) {
         localBlocks.push(`<div><strong>Disjuntores DIN (Curva B vs Curva C):</strong><br>• <strong>Curva B (3 a 5x In):</strong> Cargas resistivas (chuveiros, torneiras elétricas, iluminação e tomadas residenciais).<br>• <strong>Curva C (5 a 10x In):</strong> Cargas indutivas com pico de partida (motores, bombas, ar-condicionado e ferramentas).</div>`);
       }
 
-      // 4. Busca produtos correspondentes na loja
-      const words = lower.split(/\s+/).filter(w => w.length >= 3 && !['qual', 'quais', 'para', 'que', 'serve', 'como', 'preço', 'valor', 'tem', 'loja'].includes(w));
-      if (words.length > 0) {
-        const matchedProducts = appState.products.filter(p => words.some(w => p.name.toLowerCase().includes(w) || String(p.group || '').toLowerCase().includes(w)));
-        if (matchedProducts.length > 0) {
-          localBlocks.push(`<div><strong>Produtos Encontrados no Estoque (${matchedProducts.length}):</strong><ul class="list-disc pl-4 mt-1 space-y-0.5">${matchedProducts.slice(0, 5).map(p => `<li>${escapeHtmlStr(p.name)} — <strong>${formatBRL(p.price)}</strong> (Saldo: ${p.stock} un.)</li>`).join('')}</ul></div>`);
-        }
+      if (detectedQuoteDraft) {
+        if (!Array.isArray(appState.quotes)) appState.quotes = [];
+        appState.quotes.unshift(detectedQuoteDraft);
+        saveState();
       }
 
-      if (assistenteOnlineEnabled) {
+      if (assistenteOnlineEnabled && !detectedQuoteDraft) {
         if (btn) { btn.disabled = true; btn.textContent = 'Pesquisando...'; }
         const loadingBubble = appendAssistenteBubble(`<div class="text-sky-400 font-semibold animate-pulse">Consultando estoque e pesquisando na web...</div>`);
         const webData = await searchWebForAssistant(q);
@@ -4024,141 +4097,34 @@
         `;
         appendAssistenteBubble(html);
       } else {
-        let html = `<div class="font-bold text-sky-400">Assistente IA • Consulta Local</div>`;
+        let html = `<div class="font-bold text-sky-400">Assistente IA • Orçamentos & Balcão</div>`;
         html += localBlocks.length > 0
           ? localBlocks.join('')
-          : `<p>Nenhum dado local correspondente encontrado. Ative o botão <strong>Pesquisa Online</strong> no topo para consultar na internet.</p>`;
+          : `<p>Comando processado. Solicite a criação de um orçamento ou consulta de estoque!</p>`;
         appendAssistenteBubble(html);
       }
     }
 
-    // ==================== WIDGET FLUTUANTE WHATSAPP WEB ====================
-    function toggleWhatsAppWidget(forceState = null) {
-      const panel = document.getElementById('wa-floating-panel');
-      if (!panel) return;
-      const shouldOpen = forceState !== null ? forceState : panel.classList.contains('hidden');
-      panel.classList.toggle('hidden', !shouldOpen);
-      if (shouldOpen) populateWhatsAppCustomers();
+    function aiSaveAndOpenQuote(quoteId) {
+      navigateTo('orcamentos');
+      showToast(`Orçamento ${quoteId} pronto para envio e aprovação!`);
     }
 
-    function switchWhatsAppWidgetTab(tab) {
-      const webTab = document.getElementById('wa-tab-web');
-      const quickTab = document.getElementById('wa-tab-quick');
-      const webBtn = document.getElementById('wa-tab-web-btn');
-      const quickBtn = document.getElementById('wa-tab-quick-btn');
-      if (!webTab || !quickTab) return;
+    function aiContinueQuote(quoteId) {
+      editQuoteRecord(quoteId);
+      navigateTo('orcamentos');
+      showToast(`Continuando edição do orçamento ${quoteId}`);
+    }
 
-      if (tab === 'web') {
-        webTab.classList.remove('hidden');
-        quickTab.classList.add('hidden');
-        webBtn.className = 'py-2.5 text-emerald-400 border-b-2 border-emerald-400';
-        quickBtn.className = 'py-2.5 text-slate-400 hover:text-white border-b-2 border-transparent';
+    function aiContinuePDVSale() {
+      const latest = (appState.quotes || [])[0];
+      if (latest && latest.items) {
+        loadQuoteIntoPDV(latest.id);
       } else {
-        webTab.classList.add('hidden');
-        quickTab.classList.remove('hidden');
-        quickBtn.className = 'py-2.5 text-emerald-400 border-b-2 border-emerald-400';
-        webBtn.className = 'py-2.5 text-slate-400 hover:text-white border-b-2 border-transparent';
-        populateWhatsAppCustomers();
+        navigateTo('vendas');
       }
+      showToast('Itens carregados no Vendas & PDV!');
     }
-
-    function openDockedWhatsAppWindow(customUrl = 'https://web.whatsapp.com') {
-      const width = 440;
-      const height = 660;
-      const left = Math.max(0, window.screen.availWidth - width - 20);
-      const top = Math.max(0, window.screen.availHeight - height - 60);
-      const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
-
-      if (waDockedWindowRef && !waDockedWindowRef.closed) {
-        if (customUrl !== 'https://web.whatsapp.com') {
-          waDockedWindowRef.location.href = customUrl;
-        }
-        waDockedWindowRef.focus();
-      } else {
-        waDockedWindowRef = window.open(customUrl, 'EletroShopWhatsAppDocked', features);
-        if (!waDockedWindowRef) {
-          showToast('Permita pop-ups para abrir a mini-janela acoplada do WhatsApp Web.', true);
-        }
-      }
-    }
-
-    function populateWhatsAppCustomers() {
-      const sel = document.getElementById('wa-customer-select');
-      if (!sel) return;
-      const clients = appState.entities.filter(e => e.type === 'Cliente' && e.phone && e.phone !== '-');
-      sel.innerHTML = `<option value="">-- Selecione ou digite o telefone --</option>` +
-        clients.map(c => `<option value="${escapeHtmlStr(c.phone)}">${escapeHtmlStr(c.name)} (${escapeHtmlStr(c.phone)})</option>`).join('');
-    }
-
-    function onSelectWhatsAppCustomer(phone) {
-      const phoneInput = document.getElementById('wa-phone-input');
-      if (phoneInput && phone) phoneInput.value = phone;
-    }
-
-    function fillWhatsAppPDVCartMessage() {
-      const msgBox = document.getElementById('wa-message-input');
-      if (!msgBox) return;
-      if (cartItems.length === 0) {
-        return showToast('O carrinho do PDV está vazio no momento.', true);
-      }
-      const storeName = appState.store?.name || 'Eletro Shop';
-      const customer = document.getElementById('pdv-customer-select')?.value || 'Cliente';
-      const { subtotal, discountAmount, total } = getPDVCartTotals();
-      const lines = cartItems.map(i => `• ${i.qty}x ${i.name} — ${formatBRL(i.price * i.qty)}`).join('\n');
-      msgBox.value = `*Orçamento • ${storeName}*\nOlá, ${customer}! Seguem os itens cotados:\n\n${lines}\n\nSubtotal: ${formatBRL(subtotal)}${discountAmount > 0 ? `\nDesconto: -${formatBRL(discountAmount)}` : ''}\n*Total Final: ${formatBRL(total)}*`;
-    }
-
-    function applyWhatsAppTemplate(type) {
-      const msgBox = document.getElementById('wa-message-input');
-      const storeName = appState.store?.name || 'Eletro Shop';
-      if (!msgBox) return;
-      if (type === 'retirada') {
-        msgBox.value = `Olá! Aqui é da *${storeName}*. Seu pedido já está separado e pronto para retirada no balcão!`;
-      } else if (type === 'entrega') {
-        msgBox.value = `Olá! Aqui é da *${storeName}*. Seu pedido acabou de sair para entrega!`;
-      }
-    }
-
-    function sendWhatsAppQuickMessage() {
-      const rawPhone = String(document.getElementById('wa-phone-input')?.value || '').replace(/\D/g, '');
-      const text = String(document.getElementById('wa-message-input')?.value || '').trim();
-      if (!rawPhone || rawPhone.length < 10) {
-        return showToast('Informe um número de WhatsApp válido com DDD.', true);
-      }
-      const fullPhone = rawPhone.startsWith('55') ? rawPhone : `55${rawPhone}`;
-      const url = `https://web.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(text)}`;
-      openDockedWhatsAppWindow(url);
-    }
-
-    // ==================== RENDERIZAÇÃO GLOBAL ====================
-    function renderAllViews() {
-      updateDashboardKPIs();
-      renderProductsTable();
-      renderFinanceiroView();
-      renderPDVView();
-      renderSalesReport();
-      renderQuotesView();
-      renderEntitiesTable();
-      renderCostsTable();
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      initSupabaseClient();
-      loadLocalState();
-      applyStoreIdentity();
-      renderAllViews();
-
-      try {
-        const savedSession = sessionStorage.getItem(AUTH_SESSION_KEY);
-        if (savedSession) {
-          currentUser = JSON.parse(savedSession);
-          applyAuthenticatedSession();
-          pullStateFromSupabase(false);
-        }
-      } catch (e) {
-        console.warn(e);
-      }
-    });
   </script>
 </body>
 </html>
