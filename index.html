@@ -2346,6 +2346,118 @@
       }
     }
 
+    async function fetchTextWithTimeout(url, timeoutMs = 4500) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        return await res.text();
+      } catch {
+        clearTimeout(timer);
+        return null;
+      }
+    }
+
+    function cleanExtractedProductTitle(rawTitle, code) {
+      if (!rawTitle) return '';
+      let t = String(rawTitle)
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      // Remove sufixos comuns de sites de catálogo e marketplaces
+      t = t
+        .replace(/\s*[-|•:]\s*(Cosmos|Bluesoft|Mercado Livre|MercadoLivre|Amazon\.com\.br|Americanas|Magalu|Magazine Luiza|Shopee|Casas Bahia|Leroy Merlin|Telhanorte|Obramax|Google Search|Pesquisa Google).*$/i, '')
+        .replace(new RegExp(`\\b${code}\\b`, 'g'), '')
+        .replace(/\b(GTIN|EAN|NCM|Código de Barras|Preço|Comprar|Online)\b\s*[:|-]?/gi, '')
+        .replace(/^[-|•:–\s]+|[-|•:–\s]+$/g, '')
+        .trim();
+
+      if (t.length < 4 || /^\d+$/.test(t)) return '';
+      return t;
+    }
+
+    async function searchProductNameFromWebIndex(code) {
+      const extracted = [];
+      const searchQueries = [
+        `"${code}"`,
+        `${code} cosmos`,
+        `${code} produto`
+      ];
+
+      // 1. Consulta resultados reais da web via Jina Reader / DuckDuckGo Lite / AllOrigins
+      const proxyTargets = [
+        `https://r.jina.ai/http://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQueries[0])}`,
+        `https://api.allorigins.win/get?url=${encodeURIComponent(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQueries[0])}`)}`,
+        `https://r.jina.ai/http://cosmos.bluesoft.com.br/produtos/${encodeURIComponent(code)}`
+      ];
+
+      const [jinaDdg, allOriginsDdg, jinaCosmos] = await Promise.all([
+        fetchTextWithTimeout(proxyTargets[0], 5000),
+        fetchJsonWithTimeout(proxyTargets[1], 5000),
+        fetchTextWithTimeout(proxyTargets[2], 4500)
+      ]);
+
+      // Analisa resposta direta da página do produto no Cosmos GS1 Brasil
+      if (jinaCosmos) {
+        const titleMatch = jinaCosmos.match(/Title:\s*(.+)/i) || jinaCosmos.match(/^#\s+(.+)$/m);
+        if (titleMatch && titleMatch[1]) {
+          const cleaned = cleanExtractedProductTitle(titleMatch[1], code);
+          if (cleaned && !/não encontrado|not found|404|pesquisar/i.test(cleaned)) {
+            extracted.push({ name: cleaned, source: 'Cosmos GS1 Brasil' });
+          }
+        }
+      }
+
+      // Analisa títulos e snippets retornados da busca na web
+      const ddgTexts = [];
+      if (jinaDdg) ddgTexts.push(jinaDdg);
+      if (allOriginsDdg && allOriginsDdg.contents) ddgTexts.push(allOriginsDdg.contents);
+
+      for (const body of ddgTexts) {
+        // Links Markdown retornados pelo Jina Reader: [Título do Resultado](url)
+        const mdLinks = [...body.matchAll(/\[([^\]]{6,140})\]\(https?:\/\/[^)]+\)/g)];
+        for (const m of mdLinks) {
+          const raw = m[1];
+          if (/duckduckgo|privacy|feedback|more results|next/i.test(raw)) continue;
+          const cleaned = cleanExtractedProductTitle(raw, code);
+          if (cleaned) extracted.push({ name: cleaned, source: 'Busca Web IA' });
+        }
+
+        // Âncoras HTML de resultados: <a class="result__a" ...>Título</a>
+        const htmlLinks = [...body.matchAll(/class="result__a"[^>]*>([\s\S]*?)<\/a>/gi)];
+        for (const m of htmlLinks) {
+          const cleaned = cleanExtractedProductTitle(m[1], code);
+          if (cleaned) extracted.push({ name: cleaned, source: 'Busca Web IA' });
+        }
+
+        // Busca também menção de preço em R$ nos snippets
+        const priceMatch = body.match(/R\$\s*(\d{1,4}[.,]\d{2})/);
+        if (priceMatch && extracted.length > 0 && !extracted[0].price) {
+          const parsedPrice = Number(priceMatch[1].replace('.', '').replace(',', '.'));
+          if (!isNaN(parsedPrice) && parsedPrice > 0) extracted[0].price = parsedPrice;
+        }
+      }
+
+      // Deduplica mantendo os melhores nomes
+      const unique = [];
+      const seen = new Set();
+      for (const item of extracted) {
+        const key = item.name.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(item);
+        }
+      }
+      return unique;
+    }
+
     async function lookupBarcodeOnline() {
       const input = document.getElementById('prod-sku');
       const code = input.value.trim().replace(/\s+/g, '');
@@ -2374,12 +2486,13 @@
         button.disabled = true;
         button.textContent = 'IA Buscando...';
       }
-      setBarcodeLookupStatus('IA consultando bases globais EAN/GTIN, fabricantes e catálogos...', 'loading');
+      setBarcodeLookupStatus('IA pesquisando o código EAN na internet (Cosmos GS1, Google e catálogos)...', 'loading');
 
       try {
         let productName = '';
         let brandName = '';
         let categoryName = '';
+        let suggestedPrice = null;
         const aiCandidates = [];
         const gs1Info = parseGs1CountryAndPrefix(code);
 
@@ -2415,14 +2528,23 @@
           categoryName = KNOWN_BARCODES[code].group;
           aiCandidates.push({ name: productName, group: categoryName });
         } else {
-          // Consulta paralela em múltiplas bases abertas de EAN/GTIN
-          const [offBr, offWorld, opff, obf, upcDb] = await Promise.all([
+          // Consulta paralela em catálogos EAN/GTIN + busca web em tempo real (Cosmos GS1 / Google / Mercado Livre)
+          const [webResults, offBr, offWorld, opff, obf, upcDb] = await Promise.all([
+            searchProductNameFromWebIndex(code),
             fetchJsonWithTimeout(`https://br.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
             fetchJsonWithTimeout(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
             fetchJsonWithTimeout(`https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
             fetchJsonWithTimeout(`https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
             fetchJsonWithTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`, 4000)
           ]);
+
+          if (Array.isArray(webResults) && webResults.length > 0) {
+            productName = webResults[0].name;
+            if (webResults[0].price) suggestedPrice = webResults[0].price;
+            webResults.forEach(w => {
+              aiCandidates.push({ name: w.name, group: inferCategoryFromProductName(w.name), price: w.price || null });
+            });
+          }
 
           const offResponses = [offBr, offWorld, opff, obf];
           for (const json of offResponses) {
@@ -2461,7 +2583,6 @@
             });
           }
 
-          // Fallback inteligente via DuckDuckGo Instant Answer para códigos não catalogados nas APIs acima
           if (!productName) {
             const ddg = await fetchJsonWithTimeout(`https://api.duckduckgo.com/?q=${encodeURIComponent(code)}&format=json&no_html=1&skip_disambig=1`, 3500);
             if (ddg && (ddg.Heading || ddg.AbstractText)) {
@@ -2499,7 +2620,6 @@
           });
         }
 
-        // Busca também produtos similares já cadastrados na loja para ajudar na padronização
         if (brandName) {
           appState.products
             .filter(p => p.name.toLowerCase().includes(brandName.toLowerCase()))
@@ -2516,16 +2636,21 @@
           ? (categoryName.replace(/^[a-z]{2,3}:/i, '').replace(/[-_]/g, ' ').trim() || inferCategoryFromProductName(finalName))
           : inferCategoryFromProductName(finalName);
 
+        const resolvedGroup = inferCategoryFromProductName(finalName) !== 'Geral' ? inferCategoryFromProductName(finalName) : inferredGroup;
+
         document.getElementById('prod-name').value = finalName;
-        if (inferredGroup && !userManuallySelectedGroup) {
-          renderProductGroupOptions(inferredGroup);
+        if (resolvedGroup && !userManuallySelectedGroup) {
+          renderProductGroupOptions(resolvedGroup);
+        }
+        if (suggestedPrice && !document.getElementById('prod-price').value) {
+          document.getElementById('prod-price').value = Number(suggestedPrice).toFixed(2);
         }
 
         renderBarcodeAiPanel({
           code,
           detectedName: finalName,
           brandName,
-          inferredGroup: inferCategoryFromProductName(finalName) !== 'Geral' ? inferCategoryFromProductName(finalName) : inferredGroup,
+          inferredGroup: resolvedGroup,
           gs1Info,
           candidates: aiCandidates,
           notFoundExact
@@ -2533,11 +2658,10 @@
 
         lastBarcodeLookup = code;
         if (notFoundExact) {
-          setBarcodeLookupStatus('Código sem ficha direta — painel IA aberto com origem GS1 e busca rápida online.', 'warning');
-          showToast('Use os atalhos da IA para confirmar o nome exato do produto.');
+          setBarcodeLookupStatus('Código sem indexação pública — atalhos de pesquisa rápida disponíveis abaixo.', 'warning');
         } else {
-          setBarcodeLookupStatus('IA identificou o produto online! Confira o nome, grupo e informe o preço.', 'success');
-          showToast('Produto identificado pela IA!');
+          setBarcodeLookupStatus('Produto encontrado e preenchido automaticamente pela IA!', 'success');
+          showToast(`Preenchido: ${finalName}`);
         }
       } catch (err) {
         console.error(err);
