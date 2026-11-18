@@ -1231,7 +1231,7 @@
             <span>Buscar IA</span>
           </button>
         </div>
-        <p id="barcode-lookup-status" role="status" aria-live="polite" class="text-[11px] text-slate-400">Digite ou escaneie um EAN/GTIN para identificar o produto com IA online.</p>
+        <p id="barcode-lookup-status" role="status" aria-live="polite" class="text-[11px] text-slate-400">Bipe o EAN para preencher automaticamente ou digite o nome correto do produto.</p>
         <div id="barcode-ai-suggestions" class="hidden space-y-2 pt-1.5 border-t border-slate-800/80"></div>
       </div>
 
@@ -2296,37 +2296,16 @@
           <div class="flex items-center justify-between gap-2">
             <span class="text-[10px] font-extrabold uppercase tracking-wider text-sky-300 flex items-center gap-1">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-              Assistente IA de Cadastro • ${escapeHtmlStr(gs1Info.country)}
+              Assistente IA • ${escapeHtmlStr(gs1Info.country)}
             </span>
-            <span class="text-[10px] font-mono text-slate-400">Prefixo: ${escapeHtmlStr(gs1Info.companyPrefix)}</span>
+            <span class="text-[10px] font-mono text-slate-400">EAN: ${escapeHtmlStr(code)}</span>
           </div>
 
-          ${notFoundExact ? `
-            <p class="text-[11px] text-amber-200/90 leading-relaxed">
-              Código <strong>${escapeHtmlStr(code)}</strong> sem ficha pública direta nos catálogos abertos. Use a pesquisa rápida da IA abaixo para ver o nome exato do produto ou clique em uma sugestão:
-            </p>
-          ` : `
-            <p class="text-[11px] text-emerald-300 leading-relaxed">
-              IA identificou: <strong>${escapeHtmlStr(detectedName)}</strong>${brandName ? ` (${escapeHtmlStr(brandName)})` : ''} • Categoria sugerida: <strong>${escapeHtmlStr(inferredGroup)}</strong>.
-            </p>
-          `}
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            Selecione uma sugestão abaixo ou digite o nome correto do produto no campo ao lado.
+          </p>
 
           ${candidateButtonsHtml ? `<div class="space-y-1">${candidateButtonsHtml}</div>` : ''}
-
-          <div class="flex flex-wrap gap-1.5 pt-1">
-            <a href="https://www.google.com/search?q=${encodeURIComponent(code)}" target="_blank" rel="noopener noreferrer"
-              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[10px] font-bold text-sky-300">
-              Pesquisar EAN no Google &rarr;
-            </a>
-            <a href="https://lista.mercadolivre.com.br/${encodeURIComponent(code)}" target="_blank" rel="noopener noreferrer"
-              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[10px] font-bold text-amber-300">
-              Buscar no Mercado Livre &rarr;
-            </a>
-            <a href="https://cosmos.bluesoft.com.br/pesquisar?utf8=%E2%9C%93&q=${encodeURIComponent(code)}" target="_blank" rel="noopener noreferrer"
-              class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[10px] font-bold text-emerald-300">
-              Catálogo Cosmos GS1 &rarr;
-            </a>
-          </div>
         </div>
       `;
       sugBox.classList.remove('hidden');
@@ -2595,60 +2574,47 @@
 
         // Se a varredura não encontrou título comercial limpo, utiliza a inteligência do prefixo GS1 para nomear com precisão de balcão
         if (!productName || /just a moment|image|cloudflare|captcha|home|search/i.test(productName)) {
-          const last4 = code.slice(-4);
-          const prefixNameMap = {
-            '789': 'Material Elétrico / Construção EAN',
-            '790': 'Ferramenta / Utilidade EAN',
-            '779': 'Produto Comercial EAN',
-            '690': 'Item Importado EAN'
-          };
-          const p3 = code.slice(0, 3);
-          const basePrefixLabel = prefixNameMap[p3] || 'Mercadoria Geral EAN';
-          productName = `${basePrefixLabel} ${code.slice(-6)}`;
-          categoryName = inferCategoryFromProductName(productName);
+          productName = '';
         }
 
         let finalName = String(productName).trim();
-        if (brandName && !finalName.toLowerCase().includes(brandName.toLowerCase())) {
+        if (brandName && finalName && !finalName.toLowerCase().includes(brandName.toLowerCase())) {
           finalName = `${brandName} ${finalName}`;
-        }
-
-        // Se o nome vier genérico da web, mas conhecemos o fabricante pelo prefixo, montamos o nome comercial correto com a marca
-        if (/Mercadoria EAN|Material Elétrico|Produto EAN/i.test(finalName) && brandName) {
-          finalName = `${brandName} - Item EAN ${code.slice(-5)}`;
         }
 
         const inferredGroup = categoryName ? (categoryName.replace(/^[a-z]{2,3}:/i, '').replace(/[-_]/g, ' ').trim() || inferCategoryFromProductName(finalName)) : inferCategoryFromProductName(finalName);
         const resolvedGroup = inferCategoryFromProductName(finalName) !== 'Geral' ? inferCategoryFromProductName(finalName) : inferredGroup;
 
-        document.getElementById('prod-name').value = finalName;
-        if (resolvedGroup && !userManuallySelectedGroup) {
-          renderProductGroupOptions(resolvedGroup);
-        }
-        if (suggestedPrice && !document.getElementById('prod-price').value) {
-          document.getElementById('prod-price').value = Number(suggestedPrice).toFixed(2);
+        if (finalName) {
+          document.getElementById('prod-name').value = finalName;
+          if (resolvedGroup && !userManuallySelectedGroup) {
+            renderProductGroupOptions(resolvedGroup);
+          }
+        } else {
+          document.getElementById('prod-name').focus();
+          setBarcodeLookupStatus('EAN escaneado! Digite o nome comercial exato do produto.', 'warning');
         }
 
         renderBarcodeAiPanel({
           code,
-          detectedName: finalName,
+          detectedName: finalName || `Produto EAN ${code}`,
           brandName,
           inferredGroup: resolvedGroup,
           gs1Info,
           candidates: aiCandidates,
-          notFoundExact: false
+          notFoundExact: !finalName
         });
 
         lastBarcodeLookup = code;
-        setBarcodeLookupStatus('Produto identificado e preenchido pela IA com sucesso!', 'success');
-        showToast(`Preenchido: ${finalName}`);
+        if (finalName) {
+          setBarcodeLookupStatus('Produto identificado e preenchido pela IA!', 'success');
+          showToast(`Preenchido: ${finalName}`);
+        }
       } catch (err) {
         console.error(err);
-        const fallbackName = `Mercadoria EAN ${code}`;
-        document.getElementById('prod-name').value = fallbackName;
-        renderProductGroupOptions('Geral');
-        setBarcodeLookupStatus('Código preenchido automaticamente pela IA.', 'success');
-        showToast('Produto preenchido!');
+        document.getElementById('prod-name').focus();
+        setBarcodeLookupStatus('EAN escaneado. Digite o nome correto do produto.', 'warning');
+        showToast('Escaneado com sucesso. Informe o nome do produto.');
       } finally {
         barcodeLookupInProgress = false;
         if (button) {
