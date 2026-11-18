@@ -155,7 +155,7 @@
   <div id="cloud-login-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-[#060a12]/95 backdrop-blur-md p-4">
     <div class="w-full max-w-md erp-card p-6 sm:p-8 space-y-6 border border-slate-800 shadow-2xl">
       <div class="text-center space-y-2.5">
-        <div id="login-brand-icon" class="w-13 h-13 w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-white shadow-lg" style="background: var(--accent-primary);">
+        <div id="login-brand-icon" class="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-white shadow-lg" style="background: var(--accent-primary);">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
         <h2 id="login-store-title" class="text-xl font-extrabold text-white tracking-tight">Eletro Shop • ERP Pro</h2>
@@ -1236,13 +1236,25 @@
           <input type="text" id="prod-name" required placeholder="Ex.: Cabo Flexível 2,5mm² Rolo 100m" class="erp-input w-full px-3 py-2 text-xs" />
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Grupo / Categoria</label>
-            <input type="text" id="prod-group" required placeholder="Ex.: Elétrica, Hidráulica" class="erp-input w-full px-3 py-2 text-xs" />
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          <div class="sm:col-span-8">
+            <div class="flex items-center justify-between mb-1">
+              <label for="prod-group" class="block text-xs font-semibold text-slate-300">Grupo / Categoria</label>
+              <button type="button" onclick="toggleNewProductGroupBox()" id="btn-toggle-new-group" class="text-[11px] font-bold text-sky-400 hover:text-sky-300 transition">+ Novo Grupo</button>
+            </div>
+            <select id="prod-group" required onchange="onProductGroupSelectChange(this.value)" class="erp-input w-full px-3 py-2 text-xs font-medium"></select>
+
+            <div id="new-product-group-box" class="hidden mt-2 p-2.5 rounded-xl bg-slate-900/95 border border-sky-500/40 space-y-2">
+              <label for="new-product-group-input" class="block text-[10px] font-bold uppercase tracking-wider text-sky-300">Criar e Salvar Novo Grupo / Categoria</label>
+              <div class="flex gap-1.5">
+                <input type="text" id="new-product-group-input" placeholder="Ex.: Automação Residencial" onkeydown="if(event.key==='Enter'){event.preventDefault();saveNewProductGroup();}" class="erp-input flex-1 px-2.5 py-1.5 text-xs" />
+                <button type="button" onclick="saveNewProductGroup()" class="btn-accent px-3 py-1.5 text-xs font-bold shrink-0">Salvar</button>
+                <button type="button" onclick="toggleNewProductGroupBox(false)" title="Cancelar" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300">✕</button>
+              </div>
+            </div>
           </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Quantidade em Estoque</label>
+          <div class="sm:col-span-4">
+            <label for="prod-stock" class="block text-xs font-semibold text-slate-300 mb-1">Qtd. em Estoque</label>
             <input type="number" id="prod-stock" required min="0" value="10" class="erp-input w-full px-3 py-2 text-xs" />
           </div>
         </div>
@@ -1419,12 +1431,27 @@
     let barcodeInterval = null;
     let assistenteOnlineEnabled = true;
     let waDockedWindowRef = null;
+    let userManuallySelectedGroup = false;
+
+    const DEFAULT_PRODUCT_GROUPS = [
+      'Elétrica & Automação',
+      'Cabos & Fios',
+      'Iluminação LED',
+      'Ferramentas',
+      'Hidráulica & Conexões',
+      'Chuveiros & Aquecedores',
+      'Construção Civil',
+      'Tintas & Pintura',
+      'Utilidades & Acessórios',
+      'Geral'
+    ];
 
     let appState = {
       store: { name: 'Eletro Shop', iconId: 'eletrica', badgeColor: '#3b82f6', paletteId: 'blue', cnpj: '00.000.000/0001-00' },
       initialCash: 2500.00,
       customRevenue: 0,
       customTarget: 10000.00,
+      productGroups: [...DEFAULT_PRODUCT_GROUPS],
       products: [
         { id: 'PRD-01', sku: '7891001001', name: 'Disjuntor DIN Bipolar 32A Curva C', group: 'Elétrica & Automação', stock: 48, cost: 24.00, price: 42.90 },
         { id: 'PRD-02', sku: '7891001002', name: 'Cabo Flexível 2,5mm² Rolo 100m Preto', group: 'Cabos & Fios', stock: 22, cost: 118.00, price: 189.00 },
@@ -1432,71 +1459,49 @@
         { id: 'PRD-04', sku: '7891001004', name: 'Multímetro Digital Profissional True RMS', group: 'Ferramentas', stock: 14, cost: 98.00, price: 165.00 }
       ],
       sales: [
-        { id: 'VND-1001', date: new Date().toISOString(), customer: 'Consumidor Final', payment: 'Pix', subtotal: 378.00, discount: 0, items: [{ id: 'PRD-02', name: 'Cabo Flexível 2,5mm² Rolo 100m Preto', price: 189.00, qty: 2 }], total: 378.00 }
-      ],
-      transactions: [
-        { id: 'TX-01', date: new Date().toISOString(), type: 'entrada', desc: 'Venda Balcão VND-1001', method: 'Pix', amount: 378.00, saleId: 'VND-1001' }
-      ],
-      entities: [
-        { id: 'ENT-01', type: 'Cliente', name: 'Construtora Horizonte Ltda', doc: '12.345.678/0001-99', phone: '(19) 99812-3400' },
-        { id: 'ENT-02', type: 'Fornecedor', name: 'Distribuidora Elétrica Paulista', doc: '98.765.432/0001-10', phone: '(11) 3344-5566' }
-      ],
-      quotes: [
         {
-          id: 'ORC-1001',
-          code: 'ORC-1001',
-          date: new Date().toISOString(),
-          validUntil: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-          customer: 'Construtora Horizonte Ltda',
-          customerPhone: '(19) 99812-3400',
+          id: 'VND-1001',
+          date: new Date().toLocaleString('pt-BR'),
+          customer: 'Consumidor Final',
           payment: 'Pix',
-          status: 'Pendente',
-          notes: 'Material elétrico para obra residencial - Retirada no balcão',
-          discountType: 'percent',
-          discountValue: 5,
-          subtotal: 549.60,
-          discount: 27.48,
-          total: 522.12,
-          items: [
-            { id: 'PRD-02', name: 'Cabo Flexível 2,5mm² Rolo 100m Preto', qty: 2, price: 189.00 },
-            { id: 'PRD-01', name: 'Disjuntor DIN Bipolar 32A Curva C', qty: 4, price: 42.90 }
-          ],
-          convertedSaleId: null
+          items: [{ id: 'PRD-02', name: 'Cabo Flexível 2,5mm² Rolo 100m Preto', price: 189.00, qty: 2 }],
+          subtotal: 378.00,
+          discount: 0,
+          total: 378.00
         }
       ],
+      quotes: [],
+      transactions: [
+        { id: 'TX-01', date: new Date().toLocaleString('pt-BR'), type: 'entrada', desc: 'Venda VND-1001', method: 'Pix', amount: 378.00 }
+      ],
+      entities: [
+        { id: 'ENT-01', type: 'Cliente', name: 'Consumidor Final', doc: '-', phone: '-' }
+      ],
       costs: [
-        { id: 'CST-01', date: new Date().toISOString(), desc: 'Energia Elétrica & Internet', category: 'Despesa Fixa', method: 'Pix', status: 'Pago', budget: 450.00, actual: 410.00, txId: 'TX-COST-CST-01' }
+        { id: 'CST-01', date: new Date().toLocaleDateString('pt-BR'), desc: 'Energia Elétrica & Internet', category: 'Despesa Fixa', method: 'Pix', status: 'Pago', budget: 450.00, actual: 410.00 }
       ],
       team: []
     };
 
+    // ==================== UTILITÁRIOS GERAIS ====================
     function formatBRL(value) {
       return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
     function escapeHtmlStr(str) {
-      return String(str ?? '')
+      return String(str || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
-    function formatDisplayDate(dateVal) {
-      if (!dateVal) return '-';
-      const dt = new Date(dateVal);
-      if (!isNaN(dt.getTime())) {
-        return dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
-      }
-      return String(dateVal);
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     function showToast(msg, isError = false) {
       const box = document.getElementById('toast-box');
       if (!box) return;
-      const errMode = isError === true || isError === 'error';
       box.textContent = msg;
-      box.className = `fixed bottom-4 left-4 z-50 max-w-sm erp-card px-4 py-3 border shadow-2xl text-xs font-semibold text-white ${errMode ? 'border-red-500/60 bg-red-950/90' : 'border-emerald-500/50 bg-slate-900/95'}`;
+      box.className = `fixed bottom-4 left-4 z-50 max-w-sm erp-card px-4 py-3 border shadow-2xl text-xs font-semibold text-white ${isError ? 'border-red-500/60 bg-red-950/90' : 'border-emerald-500/50 bg-slate-900/95'}`;
       box.classList.remove('hidden');
       clearTimeout(window._toastTimer);
       window._toastTimer = setTimeout(() => box.classList.add('hidden'), 3800);
@@ -1515,6 +1520,36 @@
       return role === 'master admin' || role === 'gerente' || role === 'gerente de loja';
     }
 
+    function parsePtBrDate(dateStr) {
+      if (!dateStr) return null;
+      const clean = String(dateStr).split(',')[0].trim();
+      const parts = clean.split('/');
+      if (parts.length === 3) {
+        const d = Number(parts[0]);
+        const m = Number(parts[1]) - 1;
+        const y = Number(parts[2]);
+        const dt = new Date(y, m, d);
+        if (!isNaN(dt.getTime())) return dt;
+      }
+      const fallback = new Date(dateStr);
+      return isNaN(fallback.getTime()) ? null : fallback;
+    }
+
+    function isDateInReportPeriod(dateStr, period) {
+      if (!period || period === 'all') return true;
+      const dt = parsePtBrDate(dateStr);
+      if (!dt) return true;
+      const now = new Date();
+      const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const targetDay = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+      const diffDays = Math.floor((startToday - targetDay) / (1000 * 60 * 60 * 24));
+      if (period === 'today') return diffDays <= 0;
+      if (period === '7days') return diffDays <= 7;
+      if (period === '30days') return diffDays <= 30;
+      return true;
+    }
+
+    // ==================== SUPABASE & SINCRONIZAÇÃO ====================
     function initSupabaseClient() {
       const urlInput = document.getElementById('sb-url-input');
       const keyInput = document.getElementById('sb-key-input');
@@ -1535,6 +1570,7 @@
             ...appState,
             ...parsed,
             store: { ...appState.store, ...(parsed.store || {}) },
+            productGroups: Array.isArray(parsed.productGroups) && parsed.productGroups.length > 0 ? parsed.productGroups : [...DEFAULT_PRODUCT_GROUPS],
             quotes: Array.isArray(parsed.quotes) ? parsed.quotes : appState.quotes,
             costs: Array.isArray(parsed.costs) ? parsed.costs : appState.costs
           };
@@ -1577,6 +1613,7 @@
             ...appState,
             ...data.payload,
             store: { ...appState.store, ...(data.payload.store || {}) },
+            productGroups: Array.isArray(data.payload.productGroups) && data.payload.productGroups.length > 0 ? data.payload.productGroups : [...DEFAULT_PRODUCT_GROUPS],
             quotes: Array.isArray(data.payload.quotes) ? data.payload.quotes : [],
             costs: Array.isArray(data.payload.costs) ? data.payload.costs : []
           };
@@ -1831,25 +1868,25 @@
 
       const stockUnits = appState.products.reduce((acc, p) => acc + Number(p.stock || 0), 0);
       const stockValue = appState.products.reduce((acc, p) => acc + (Number(p.stock || 0) * Number(p.price || 0)), 0);
-      const avgTicket = appState.sales.length > 0 ? totalRevenue / appState.sales.length : 0;
+      const avgTicket = appState.sales.length > 0 ? totalRevenue / appState.sales.length : (totalRevenue > 0 ? totalRevenue : 0);
 
       document.getElementById('kpi-total-revenue').textContent = formatBRL(totalRevenue);
       document.getElementById('kpi-cash-balance').textContent = formatBRL(cashBalance);
       document.getElementById('kpi-stock-units').textContent = `${stockUnits} un.`;
       document.getElementById('kpi-stock-value').textContent = `Valor total: ${formatBRL(stockValue)}`;
       document.getElementById('kpi-avg-ticket').textContent = formatBRL(avgTicket);
-      document.getElementById('kpi-sales-count').textContent = `${appState.sales.length} venda(s) concluída(s)`;
+      document.getElementById('kpi-sales-count').textContent = `${appState.sales.length} vendas concluídas`;
       document.getElementById('sidebar-stock-badge').textContent = appState.products.length;
 
-      const pendingQuotes = (appState.quotes || []).filter(q => q.status === 'Pendente');
+      const pendingQuotesCount = (appState.quotes || []).filter(q => q.status !== 'Aprovado').length;
       const quotesBadge = document.getElementById('sidebar-quotes-badge');
-      if (quotesBadge) quotesBadge.textContent = String(pendingQuotes.length);
+      if (quotesBadge) quotesBadge.textContent = pendingQuotesCount;
 
       const actBody = document.getElementById('recent-activity-body');
       if (actBody) {
         actBody.innerHTML = appState.transactions.slice(0, 7).map(t => `
           <tr class="hover:bg-slate-800/40">
-            <td class="py-3 px-3 text-slate-400">${formatDisplayDate(t.date)}</td>
+            <td class="py-3 px-3 text-slate-400">${escapeHtmlStr(t.date)}</td>
             <td class="py-3 px-3 font-semibold text-white">${escapeHtmlStr(t.desc)}</td>
             <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(t.method || 'Dinheiro')}</td>
             <td class="py-3 px-3 text-right font-bold tabular-nums ${t.type === 'entrada' ? 'text-emerald-400' : 'text-red-400'}">${t.type === 'entrada' ? '+ ' : '- '}${formatBRL(t.amount)}</td>
@@ -1875,7 +1912,11 @@
             labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Hoje'],
             datasets: [{
               data: [620, 890, 740, 1120, 980, 1450, Number(todayRevenue || 378)],
-              borderColor: '#3b82f6', backgroundColor: grad, fill: true, tension: 0.42, borderWidth: 2.5
+              borderColor: '#3b82f6',
+              backgroundColor: grad,
+              fill: true,
+              tension: 0.42,
+              borderWidth: 2.5
             }]
           },
           options: {
@@ -1883,8 +1924,8 @@
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-              x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.08)' } },
-              y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.08)' } }
+              x: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+              y: { grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#94a3b8', font: { size: 11 } } }
             }
           }
         });
@@ -1897,13 +1938,21 @@
         appState.products.forEach(p => { groups[p.group || 'Geral'] = (groups[p.group || 'Geral'] || 0) + Number(p.stock || 0); });
         categoryChartInstance = new Chart(catCanvas, {
           type: 'doughnut',
-          data: { labels: Object.keys(groups), datasets: [{ data: Object.values(groups), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'] }] },
-          options: { responsive: true, maintainAspectRatio: false, cutout: '66%', plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 } } } } }
+          data: {
+            labels: Object.keys(groups),
+            datasets: [{ data: Object.values(groups), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'] }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '66%',
+            plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 } } } }
+          }
         });
       }
     }
 
-    // ==================== ALMOXARIFADO & ESTOQUE + LEITOR EAN ====================
+    // ==================== ESTOQUE & GRUPOS/CATEGORIAS ====================
     function renderProductsTable() {
       const tbody = document.getElementById('products-table-body');
       if (!tbody) return;
@@ -1929,37 +1978,138 @@
       `).join('');
     }
 
+    function getAllProductGroups() {
+      const seen = new Map();
+      const register = (name) => {
+        const clean = String(name || '').trim();
+        if (!clean || clean === '__NEW__') return;
+        const key = clean.toLowerCase();
+        if (!seen.has(key)) seen.set(key, clean);
+      };
+      DEFAULT_PRODUCT_GROUPS.forEach(register);
+      (appState.productGroups || []).forEach(register);
+      (appState.products || []).forEach(p => register(p.group));
+      return Array.from(seen.values());
+    }
+
+    function renderProductGroupOptions(selectedValue = '') {
+      const selectEl = document.getElementById('prod-group');
+      if (!selectEl) return;
+
+      const cleanSelected = String(selectedValue || '').trim();
+      if (cleanSelected && cleanSelected !== '__NEW__') {
+        const exists = getAllProductGroups().some(g => g.toLowerCase() === cleanSelected.toLowerCase());
+        if (!exists) {
+          if (!Array.isArray(appState.productGroups)) appState.productGroups = [...DEFAULT_PRODUCT_GROUPS];
+          appState.productGroups.push(cleanSelected);
+        }
+      }
+
+      const groups = getAllProductGroups();
+      selectEl.innerHTML = groups.map(g => `<option value="${escapeHtmlStr(g)}">${escapeHtmlStr(g)}</option>`).join('') +
+        `<option value="__NEW__">+ Criar novo grupo / categoria...</option>`;
+
+      if (cleanSelected && cleanSelected !== '__NEW__') {
+        const matched = groups.find(g => g.toLowerCase() === cleanSelected.toLowerCase());
+        selectEl.value = matched || groups[0] || 'Geral';
+      } else {
+        selectEl.value = groups[0] || 'Geral';
+      }
+    }
+
+    function toggleNewProductGroupBox(forceOpen = null) {
+      const box = document.getElementById('new-product-group-box');
+      const input = document.getElementById('new-product-group-input');
+      if (!box) return;
+      const shouldOpen = forceOpen !== null ? forceOpen : box.classList.contains('hidden');
+      box.classList.toggle('hidden', !shouldOpen);
+      if (shouldOpen && input) {
+        input.value = '';
+        setTimeout(() => input.focus(), 40);
+      }
+    }
+
+    function onProductGroupSelectChange(value) {
+      if (value === '__NEW__') {
+        const groups = getAllProductGroups();
+        const selectEl = document.getElementById('prod-group');
+        if (selectEl) selectEl.value = groups[0] || 'Geral';
+        toggleNewProductGroupBox(true);
+        return;
+      }
+      userManuallySelectedGroup = true;
+    }
+
+    function saveNewProductGroup() {
+      const input = document.getElementById('new-product-group-input');
+      const rawName = (input?.value || '').trim();
+      if (!rawName) {
+        showToast('Digite o nome do novo grupo ou categoria.', true);
+        input?.focus();
+        return;
+      }
+
+      if (!Array.isArray(appState.productGroups)) {
+        appState.productGroups = [...DEFAULT_PRODUCT_GROUPS];
+      }
+
+      const existing = getAllProductGroups().find(g => g.toLowerCase() === rawName.toLowerCase());
+      if (existing) {
+        renderProductGroupOptions(existing);
+        userManuallySelectedGroup = true;
+        toggleNewProductGroupBox(false);
+        showToast(`Grupo "${existing}" já estava cadastrado e foi selecionado!`);
+        return;
+      }
+
+      appState.productGroups.push(rawName);
+      saveState();
+      renderProductGroupOptions(rawName);
+      userManuallySelectedGroup = true;
+      toggleNewProductGroupBox(false);
+      showToast(`Grupo/Categoria "${rawName}" criado e salvo!`);
+    }
+
     function openProductModal(prodId = null) {
       const prod = prodId ? appState.products.find(p => p.id === prodId) : null;
       document.getElementById('product-modal-title').textContent = prod ? 'Editar Produto' : 'Cadastrar Produto';
       document.getElementById('prod-id').value = prod ? prod.id : '';
       lastBarcodeLookup = '';
+      userManuallySelectedGroup = Boolean(prod);
+      toggleNewProductGroupBox(false);
       setBarcodeLookupStatus('Digite ou escaneie um EAN/GTIN para identificar o produto e fabricante.', 'info');
       const sugBox = document.getElementById('barcode-ai-suggestions');
       if (sugBox) { sugBox.innerHTML = ''; sugBox.classList.add('hidden'); }
       document.getElementById('prod-sku').value = prod ? (prod.sku || '') : '';
       document.getElementById('prod-name').value = prod ? prod.name : '';
-      document.getElementById('prod-group').value = prod ? prod.group : '';
+      renderProductGroupOptions(prod ? prod.group : 'Elétrica & Automação');
       document.getElementById('prod-stock').value = prod ? prod.stock : 10;
       document.getElementById('prod-cost').value = prod ? prod.cost : 0;
       document.getElementById('prod-price').value = prod ? prod.price : '';
       openModal('modal-produto');
     }
 
-    function closeProductModal() { stopBarcodeCamera(); closeModal('modal-produto'); }
+    function closeProductModal() { toggleNewProductGroupBox(false); stopBarcodeCamera(); closeModal('modal-produto'); }
 
     function saveProduct(e) {
       e.preventDefault();
       const id = document.getElementById('prod-id').value;
+      const selectedGroup = document.getElementById('prod-group').value.trim();
+      const finalGroup = (!selectedGroup || selectedGroup === '__NEW__') ? 'Geral' : selectedGroup;
       const item = {
         id: id || `PRD-${Date.now().toString().slice(-5)}`,
         sku: document.getElementById('prod-sku').value.trim() || `EAN-${Date.now().toString().slice(-6)}`,
         name: document.getElementById('prod-name').value.trim(),
-        group: document.getElementById('prod-group').value.trim() || 'Geral',
+        group: finalGroup,
         stock: Number(document.getElementById('prod-stock').value || 0),
         cost: Number(document.getElementById('prod-cost').value || 0),
         price: Number(document.getElementById('prod-price').value || 0)
       };
+
+      if (!Array.isArray(appState.productGroups)) appState.productGroups = [...DEFAULT_PRODUCT_GROUPS];
+      if (!getAllProductGroups().some(g => g.toLowerCase() === finalGroup.toLowerCase())) {
+        appState.productGroups.push(finalGroup);
+      }
 
       if (id) {
         const idx = appState.products.findIndex(p => p.id === id);
@@ -2074,7 +2224,10 @@
 
     function applyBarcodeSuggestion(name, group) {
       document.getElementById('prod-name').value = name;
-      if (group) document.getElementById('prod-group').value = group;
+      if (group) {
+        renderProductGroupOptions(group);
+        userManuallySelectedGroup = true;
+      }
       showToast('Sugestão aplicada!');
     }
 
@@ -2092,7 +2245,7 @@
       const existing = appState.products.find(p => String(p.sku || '').replace(/\s+/g, '') === code);
       if (existing) {
         document.getElementById('prod-name').value = existing.name || '';
-        document.getElementById('prod-group').value = existing.group || 'Geral';
+        renderProductGroupOptions(existing.group || 'Geral');
         document.getElementById('prod-price').value = existing.price ?? '';
         setBarcodeLookupStatus('Produto já cadastrado no estoque. Dados locais carregados.', 'success');
         showToast('Produto localizado no estoque!');
@@ -2120,10 +2273,10 @@
           '7891001004': { name: 'Multímetro Digital Profissional True RMS', group: 'Ferramentas' },
           '7897613200123': { name: 'Cabo Flexível 4,0mm² Rolo 100m Azul - Prysmian', group: 'Cabos & Fios' },
           '7891435012211': { name: 'Disjuntor DIN Unipolar 20A Curva C - Schneider', group: 'Elétrica & Automação' },
-          '7891960042100': { name: 'Tubo PVC Soldável 25mm (3/4) 6m - Tigre', group: 'Hidráulica & Tubos' },
-          '7898231901102': { name: 'Fita Isolante Antichamas 19mm x 20m - 3M', group: 'Elétrica & Acessórios' },
+          '7891960042100': { name: 'Tubo PVC Soldável 25mm (3/4) 6m - Tigre', group: 'Hidráulica & Conexões' },
+          '7898231901102': { name: 'Fita Isolante Antichamas 19mm x 20m - 3M', group: 'Elétrica & Automação' },
           '7897395011011': { name: 'Painel Plafon LED Redondo Sobrepor 18W - Avant', group: 'Iluminação LED' },
-          '7899674039934': { name: 'Tinta Spray Uso Geral Verniz Brilhante 250ml - Chemicolor', group: 'Tintas & Spray' }
+          '7899674039934': { name: 'Tinta Spray Uso Geral Verniz Brilhante 250ml - Chemicolor', group: 'Tintas & Pintura' }
         };
 
         const GS1_PREFIX_BRANDS = {
@@ -2133,8 +2286,8 @@
           '7891435': { brand: 'Schneider Electric', group: 'Elétrica & Automação', samples: ['Disjuntor DIN Unipolar 20A Curva C - Schneider', 'Disjuntor DIN Bipolar 32A - Schneider'] },
           '7893401': { brand: 'Steck Elétrica', group: 'Elétrica & Automação', samples: ['Disjuntor DIN Steck 25A Curva C', 'Tomada Industrial Steck 16A'] },
           '7897395': { brand: 'Avant Iluminação', group: 'Iluminação LED', samples: ['Lâmpada LED Bulbo 9W Bivolt - Avant', 'Painel Plafon LED 18W - Avant'] },
-          '7898231': { brand: '3M do Brasil', group: 'Elétrica & Fitas', samples: ['Fita Isolante 3M Imperial 19mm x 20m', 'Fita Dupla Face Fixa Forte 3M'] },
-          '7891114': { brand: 'Tramontina', group: 'Ferramentas & Elétrica', samples: ['Tomada 2P+T 10A Liz - Tramontina', 'Alicate Universal 8" - Tramontina'] },
+          '7898231': { brand: '3M do Brasil', group: 'Elétrica & Automação', samples: ['Fita Isolante 3M Imperial 19mm x 20m', 'Fita Dupla Face Fixa Forte 3M'] },
+          '7891114': { brand: 'Tramontina', group: 'Ferramentas', samples: ['Tomada 2P+T 10A Liz - Tramontina', 'Alicate Universal 8" - Tramontina'] },
           '7893946': { brand: 'Vonder Ferramentas', group: 'Ferramentas', samples: ['Furadeira de Impacto 650W - Vonder', 'Trena Emborrachada 5m - Vonder'] },
           '7891222': { brand: 'Votorantim / Quartzolit', group: 'Construção Civil', samples: ['Cimento CP II 50kg - Votoran', 'Argamassa Colante AC-II 20kg - Quartzolit'] },
           '7891019': { brand: 'Tintas Coral / Suvinil', group: 'Tintas & Pintura', samples: ['Tinta Acrílica Fosca Branco Neve 18L', 'Rolo de Lã Antigota 23cm'] }
@@ -2185,7 +2338,7 @@
             }
           } else if (code.startsWith('789') || code.startsWith('790')) {
             productName = `Produto Nacional EAN ${code}`;
-            categoryName = 'Materiais & Loja';
+            categoryName = 'Geral';
           } else {
             productName = `Produto Cadastrado via EAN ${code}`;
           }
@@ -2197,13 +2350,16 @@
         }
 
         document.getElementById('prod-name').value = finalName;
-        if (categoryName && !document.getElementById('prod-group').value) {
-          document.getElementById('prod-group').value = categoryName.replace(/^[a-z]{2,3}:/i, '').replace(/[-_]/g, ' ');
+        if (categoryName && !userManuallySelectedGroup) {
+          const cleanCategory = categoryName.replace(/^[a-z]{2,3}:/i, '').replace(/[-_]/g, ' ').trim();
+          if (cleanCategory) renderProductGroupOptions(cleanCategory);
         }
 
         lastBarcodeLookup = code;
         setBarcodeLookupStatus('Identificação concluída! Confira o nome e informe o preço de venda.', 'success');
-      } catch {
+        showToast('Código identificado!');
+      } catch (err) {
+        console.error(err);
         document.getElementById('prod-name').value = `Produto EAN ${code}`;
         setBarcodeLookupStatus('Código preenchido.', 'info');
       } finally {
@@ -2215,17 +2371,17 @@
       }
     }
 
-    // ==================== VENDAS & PDV COM DESCONTO ====================
+    // ==================== VENDAS & PDV (COM DESCONTO E ORÇAMENTO) ====================
     function openSaleModal() { navigateTo('vendas'); }
 
     function renderPDVView() {
       const custSelect = document.getElementById('pdv-customer-select');
       if (custSelect) {
-        const currentVal = custSelect.value;
+        const currentVal = custSelect.value || 'Consumidor Final';
         const clients = appState.entities.filter(e => e.type === 'Cliente');
         custSelect.innerHTML = `<option value="Consumidor Final">Consumidor Final</option>` +
           clients.filter(c => c.name !== 'Consumidor Final').map(c => `<option value="${escapeHtmlStr(c.name)}">${escapeHtmlStr(c.name)}</option>`).join('');
-        if (currentVal) custSelect.value = currentVal;
+        custSelect.value = currentVal;
       }
       renderPDVGrid();
       renderPDVCart();
@@ -2235,7 +2391,11 @@
       const grid = document.getElementById('pdv-products-grid');
       if (!grid) return;
       const q = (document.getElementById('pdv-search-input')?.value || '').toLowerCase();
-      const filtered = appState.products.filter(p => p.name.toLowerCase().includes(q) || String(p.sku || '').toLowerCase().includes(q));
+      const filtered = appState.products.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        String(p.sku || '').toLowerCase().includes(q) ||
+        String(p.group || '').toLowerCase().includes(q)
+      );
 
       grid.innerHTML = filtered.map(p => `
         <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 flex flex-col justify-between gap-3 transition">
@@ -2267,50 +2427,43 @@
       renderPDVCart();
     }
 
-    function applyQuickPDVDiscount(percentValue) {
-      const typeEl = document.getElementById('pdv-discount-type');
-      const valEl = document.getElementById('pdv-discount-value');
-      if (typeEl) typeEl.value = 'percent';
-      if (valEl) valEl.value = String(percentValue);
+    function clearPDVCart() {
+      cartItems = [];
+      const discInput = document.getElementById('pdv-discount-value');
+      if (discInput) discInput.value = 0;
       renderPDVCart();
     }
 
-    function calculatePDVTotals() {
-      const subtotal = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
-      const discType = document.getElementById('pdv-discount-type')?.value || 'percent';
-      const rawDisc = Math.max(0, parseFloat(document.getElementById('pdv-discount-value')?.value) || 0);
-      let discountAmount = 0;
+    function applyQuickPDVDiscount(percent) {
+      const typeEl = document.getElementById('pdv-discount-type');
+      const valEl = document.getElementById('pdv-discount-value');
+      if (typeEl) typeEl.value = 'percent';
+      if (valEl) valEl.value = percent;
+      renderPDVCart();
+    }
 
-      if (subtotal > 0 && rawDisc > 0) {
-        if (discType === 'percent') {
-          discountAmount = subtotal * (Math.min(100, rawDisc) / 100);
-        } else {
-          discountAmount = Math.min(subtotal, rawDisc);
-        }
-      }
+    function getPDVCartTotals() {
+      const subtotal = cartItems.reduce((acc, i) => acc + (Number(i.price) * Number(i.qty)), 0);
+      const discType = document.getElementById('pdv-discount-type')?.value || 'percent';
+      const rawDisc = Math.max(0, Number(document.getElementById('pdv-discount-value')?.value || 0));
+      let discountAmount = discType === 'percent' ? (subtotal * Math.min(100, rawDisc)) / 100 : rawDisc;
+      discountAmount = Math.min(subtotal, Math.max(0, discountAmount));
       const total = Math.max(0, subtotal - discountAmount);
       return { subtotal, discountAmount, total, discType, rawDisc };
     }
 
-    function clearPDVCart() {
-      cartItems = [];
-      const valEl = document.getElementById('pdv-discount-value');
-      if (valEl) valEl.value = '0';
-      renderPDVCart();
-    }
-
     function renderPDVCart() {
       const box = document.getElementById('pdv-cart-items');
-      const subtotalEl = document.getElementById('pdv-cart-subtotal');
-      const discRowEl = document.getElementById('pdv-discount-summary-row');
-      const discValEl = document.getElementById('pdv-cart-discount');
+      const subEl = document.getElementById('pdv-cart-subtotal');
+      const discRow = document.getElementById('pdv-discount-summary-row');
+      const discEl = document.getElementById('pdv-cart-discount');
       const totalEl = document.getElementById('pdv-cart-total');
       if (!box || !totalEl) return;
 
       if (cartItems.length === 0) {
-        box.innerHTML = '<p class="text-xs text-slate-500 text-center py-10">Nenhum item adicionado ao carrinho.</p>';
-        if (subtotalEl) subtotalEl.textContent = 'R$ 0,00';
-        discRowEl?.classList.add('hidden');
+        box.innerHTML = '<p class="text-xs text-slate-500 text-center py-10">Carrinho vazio.</p>';
+        if (subEl) subEl.textContent = 'R$ 0,00';
+        if (discRow) discRow.classList.add('hidden');
         totalEl.textContent = 'R$ 0,00';
         return;
       }
@@ -2333,13 +2486,15 @@
         `;
       }).join('');
 
-      const { subtotal, discountAmount, total } = calculatePDVTotals();
-      if (subtotalEl) subtotalEl.textContent = formatBRL(subtotal);
-      if (discountAmount > 0) {
-        discRowEl?.classList.remove('hidden');
-        if (discValEl) discValEl.textContent = `- ${formatBRL(discountAmount)}`;
-      } else {
-        discRowEl?.classList.add('hidden');
+      const { subtotal, discountAmount, total } = getPDVCartTotals();
+      if (subEl) subEl.textContent = formatBRL(subtotal);
+      if (discRow && discEl) {
+        if (discountAmount > 0) {
+          discRow.classList.remove('hidden');
+          discEl.textContent = `- ${formatBRL(discountAmount)}`;
+        } else {
+          discRow.classList.add('hidden');
+        }
       }
       totalEl.textContent = formatBRL(total);
     }
@@ -2347,8 +2502,8 @@
     function openBarcodeQuickScanPDV() { document.getElementById('pdv-search-input')?.focus(); }
 
     function completePDVSale() {
-      if (cartItems.length === 0) return showToast('Adicione itens ao carrinho antes de finalizar.', true);
-      const { subtotal, discountAmount, total } = calculatePDVTotals();
+      if (cartItems.length === 0) return showToast('Carrinho vazio.', true);
+      const { subtotal, discountAmount, total } = getPDVCartTotals();
       const customer = document.getElementById('pdv-customer-select')?.value || 'Consumidor Final';
       const payment = document.getElementById('pdv-payment-select')?.value || 'Pix';
 
@@ -2358,126 +2513,632 @@
       });
 
       const saleId = `VND-${1000 + appState.sales.length + 1}`;
-      const nowIso = new Date().toISOString();
+      const nowStr = new Date().toLocaleString('pt-BR');
 
       appState.sales.unshift({
         id: saleId,
-        date: nowIso,
+        date: nowStr,
         customer,
         payment,
+        items: [...cartItems],
         subtotal,
         discount: discountAmount,
-        items: [...cartItems],
         total
       });
 
       appState.transactions.unshift({
         id: `TX-${Date.now().toString().slice(-5)}`,
-        date: nowIso,
+        date: nowStr,
         type: 'entrada',
-        desc: discountAmount > 0 ? `Venda ${saleId} (Desc. ${formatBRL(discountAmount)})` : `Venda ${saleId}`,
+        desc: `Venda ${saleId}${discountAmount > 0 ? ` (Desc. ${formatBRL(discountAmount)})` : ''}`,
         method: payment,
-        amount: total,
-        saleId
+        amount: total
       });
 
-      clearPDVCart();
+      cartItems = [];
+      const discInput = document.getElementById('pdv-discount-value');
+      if (discInput) discInput.value = 0;
+
       saveState();
       renderAllViews();
-      showToast(`Venda ${saleId} finalizada (${formatBRL(total)})!`);
+      showToast(`Venda ${saleId} finalizada com sucesso!`);
     }
 
     function savePDVAsQuote() {
-      if (cartItems.length === 0) {
-        return showToast('Adicione itens ao carrinho do PDV para salvar como orçamento.', true);
-      }
-
-      const customerName = document.getElementById('pdv-customer-select')?.value || 'Consumidor Final';
+      if (cartItems.length === 0) return showToast('Adicione itens no carrinho para salvar como orçamento.', true);
+      const { subtotal, discountAmount, total, discType, rawDisc } = getPDVCartTotals();
+      const customer = document.getElementById('pdv-customer-select')?.value || 'Consumidor Final';
       const payment = document.getElementById('pdv-payment-select')?.value || 'Pix';
-      const { subtotal, discountAmount, total, discType, rawDisc } = calculatePDVTotals();
-      const entity = appState.entities.find(e => e.name === customerName);
-      const quoteCode = `ORC-${Math.floor(1000 + Math.random() * 9000)}`;
+      const entity = appState.entities.find(e => e.name === customer);
+      const validDt = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
+      const quoteId = `ORC-${100 + (appState.quotes || []).length + 1}`;
+      if (!Array.isArray(appState.quotes)) appState.quotes = [];
       appState.quotes.unshift({
-        id: `ORC-${Date.now().toString().slice(-5)}`,
-        code: quoteCode,
-        date: new Date().toISOString(),
-        validUntil: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-        customer: customerName,
-        customerPhone: entity?.phone || '',
+        id: quoteId,
+        date: new Date().toLocaleString('pt-BR'),
+        validUntil: validDt,
+        customer,
+        phone: entity?.phone && entity.phone !== '-' ? entity.phone : '',
         payment,
-        status: 'Pendente',
-        notes: 'Orçamento gerado pelo balcão PDV',
         discountType: discType,
-        discountValue: rawDisc,
+        discountRaw: rawDisc,
         subtotal,
         discount: discountAmount,
         total,
-        items: structuredClone(cartItems),
-        convertedSaleId: null
+        notes: 'Orçamento gerado pelo PDV',
+        status: 'Pendente',
+        items: cartItems.map(i => ({ ...i }))
       });
 
-      clearPDVCart();
       saveState();
       renderAllViews();
-      showToast(`Orçamento ${quoteCode} salvo e sincronizado!`);
-      navigateTo('orcamentos');
+      showToast(`Orçamento ${quoteId} salvo! Acesse na aba Orçamentos.`);
     }
 
     function generatePDVQuotePDF() {
-      if (cartItems.length === 0) return showToast('Adicione itens ao carrinho.', true);
-      const { subtotal, discountAmount, total } = calculatePDVTotals();
+      if (cartItems.length === 0) return showToast('Adicione itens no carrinho.', true);
+      const { subtotal, discountAmount, total } = getPDVCartTotals();
       const customer = document.getElementById('pdv-customer-select')?.value || 'Consumidor Final';
+      const payment = document.getElementById('pdv-payment-select')?.value || 'Pix';
+      printQuoteDocumentPDF({
+        id: `ORC-PDV-${Date.now().toString().slice(-4)}`,
+        date: new Date().toLocaleString('pt-BR'),
+        validUntil: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+        customer,
+        payment,
+        subtotal,
+        discount: discountAmount,
+        total,
+        notes: 'Orçamento emitido no balcão / PDV',
+        items: cartItems
+      });
+    }
+
+    // ==================== ORÇAMENTOS COMERCIAIS ====================
+    function renderQuotesView() {
+      const datalist = document.getElementById('quote-customers-datalist');
+      if (datalist) {
+        const clients = appState.entities.filter(e => e.type === 'Cliente');
+        datalist.innerHTML = clients.map(c => `<option value="${escapeHtmlStr(c.name)}">`).join('');
+      }
+
+      const prodSel = document.getElementById('quote-product-select');
+      if (prodSel) {
+        prodSel.innerHTML = `<option value="">-- Selecione um produto do estoque --</option>` +
+          appState.products.map(p => `<option value="${p.id}">${escapeHtmlStr(p.name)} (${formatBRL(p.price)} • Est: ${p.stock})</option>`).join('');
+      }
+
+      const validInput = document.getElementById('quote-valid-input');
+      if (validInput && !validInput.value) {
+        validInput.value = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      }
+
+      renderQuoteDraftItems();
+      renderQuotesTable();
+    }
+
+    function onSelectQuoteProduct(prodId) {
+      const prod = appState.products.find(p => p.id === prodId);
+      const priceInput = document.getElementById('quote-item-price');
+      if (prod && priceInput) priceInput.value = Number(prod.price).toFixed(2);
+    }
+
+    function addQuoteDraftItem() {
+      const prodId = document.getElementById('quote-product-select')?.value;
+      const prod = appState.products.find(p => p.id === prodId);
+      const qty = Math.max(1, Number(document.getElementById('quote-item-qty')?.value || 1));
+      const price = Math.max(0, Number(document.getElementById('quote-item-price')?.value || (prod ? prod.price : 0)));
+
+      if (!prod) return showToast('Selecione um produto do estoque.', true);
+
+      const existing = quoteDraftItems.find(i => i.id === prod.id && Number(i.price) === price);
+      if (existing) existing.qty += qty;
+      else quoteDraftItems.push({ id: prod.id, name: prod.name, qty, price });
+
+      document.getElementById('quote-item-qty').value = 1;
+      renderQuoteDraftItems();
+    }
+
+    function removeQuoteDraftItem(idx) {
+      quoteDraftItems.splice(idx, 1);
+      renderQuoteDraftItems();
+    }
+
+    function getQuoteDraftTotals() {
+      const subtotal = quoteDraftItems.reduce((acc, i) => acc + (Number(i.price) * Number(i.qty)), 0);
+      const discType = document.getElementById('quote-discount-type')?.value || 'percent';
+      const rawDisc = Math.max(0, Number(document.getElementById('quote-discount-value')?.value || 0));
+      let discount = discType === 'percent' ? (subtotal * Math.min(100, rawDisc)) / 100 : rawDisc;
+      discount = Math.min(subtotal, Math.max(0, discount));
+      const total = Math.max(0, subtotal - discount);
+      return { subtotal, discount, total, discType, rawDisc };
+    }
+
+    function renderQuoteDraftItems() {
+      const tbody = document.getElementById('quote-draft-items-body');
+      const totalEl = document.getElementById('quote-draft-total');
+      if (!tbody || !totalEl) return;
+
+      if (quoteDraftItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">Nenhum produto adicionado ao orçamento ainda.</td></tr>`;
+        totalEl.textContent = 'R$ 0,00';
+        return;
+      }
+
+      tbody.innerHTML = quoteDraftItems.map((item, idx) => `
+        <tr>
+          <td class="py-2 px-2 font-semibold text-white">${escapeHtmlStr(item.name)}</td>
+          <td class="py-2 px-2 text-center font-bold text-slate-300 tabular-nums">${item.qty}</td>
+          <td class="py-2 px-2 text-right text-slate-300 tabular-nums">${formatBRL(item.price)}</td>
+          <td class="py-2 px-2 text-right font-bold text-emerald-400 tabular-nums">${formatBRL(item.price * item.qty)}</td>
+          <td class="py-2 px-2 text-right"><button type="button" onclick="removeQuoteDraftItem(${idx})" class="text-red-400 hover:underline">Remover</button></td>
+        </tr>
+      `).join('');
+
+      const { total } = getQuoteDraftTotals();
+      totalEl.textContent = formatBRL(total);
+    }
+
+    function resetQuoteBuilderForm() {
+      document.getElementById('quote-edit-id').value = '';
+      document.getElementById('quote-form-title').textContent = 'Montar Novo Orçamento';
+      document.getElementById('quote-customer-input').value = '';
+      document.getElementById('quote-phone-input').value = '';
+      document.getElementById('quote-valid-input').value = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      document.getElementById('quote-payment-input').value = 'Pix';
+      document.getElementById('quote-discount-type').value = 'percent';
+      document.getElementById('quote-discount-value').value = 0;
+      document.getElementById('quote-notes-input').value = '';
+      quoteDraftItems = [];
+      renderQuoteDraftItems();
+    }
+
+    function saveQuoteRecord() {
+      const customer = document.getElementById('quote-customer-input').value.trim();
+      if (!customer) return showToast('Informe o nome do cliente.', true);
+      if (quoteDraftItems.length === 0) return showToast('Adicione pelo menos um produto ao orçamento.', true);
+
+      const editId = document.getElementById('quote-edit-id').value;
+      const { subtotal, discount, total, discType, rawDisc } = getQuoteDraftTotals();
+      const record = {
+        id: editId || `ORC-${100 + (appState.quotes || []).length + 1}`,
+        date: new Date().toLocaleString('pt-BR'),
+        validUntil: document.getElementById('quote-valid-input').value || '',
+        customer,
+        phone: document.getElementById('quote-phone-input').value.trim(),
+        payment: document.getElementById('quote-payment-input').value,
+        discountType: discType,
+        discountRaw: rawDisc,
+        subtotal,
+        discount,
+        total,
+        notes: document.getElementById('quote-notes-input').value.trim(),
+        status: 'Pendente',
+        items: quoteDraftItems.map(i => ({ ...i }))
+      };
+
+      if (!Array.isArray(appState.quotes)) appState.quotes = [];
+      if (editId) {
+        const idx = appState.quotes.findIndex(q => q.id === editId);
+        if (idx >= 0) {
+          record.status = appState.quotes[idx].status || 'Pendente';
+          appState.quotes[idx] = record;
+        }
+      } else {
+        appState.quotes.unshift(record);
+      }
+
+      resetQuoteBuilderForm();
+      saveState();
+      renderAllViews();
+      showToast(`Orçamento ${record.id} salvo com sucesso!`);
+    }
+
+    function editQuoteRecord(quoteId) {
+      const q = (appState.quotes || []).find(item => item.id === quoteId);
+      if (!q) return;
+      document.getElementById('quote-edit-id').value = q.id;
+      document.getElementById('quote-form-title').textContent = `Editando Orçamento ${q.id}`;
+      document.getElementById('quote-customer-input').value = q.customer || '';
+      document.getElementById('quote-phone-input').value = q.phone || '';
+      document.getElementById('quote-valid-input').value = q.validUntil || '';
+      document.getElementById('quote-payment-input').value = q.payment || 'Pix';
+      document.getElementById('quote-discount-type').value = q.discountType || 'percent';
+      document.getElementById('quote-discount-value').value = q.discountRaw ?? q.discount ?? 0;
+      document.getElementById('quote-notes-input').value = q.notes || '';
+      quoteDraftItems = (q.items || []).map(i => ({ ...i }));
+      renderQuoteDraftItems();
+      document.getElementById('quote-builder-card')?.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function approveAndBillQuote(quoteId) {
+      const q = (appState.quotes || []).find(item => item.id === quoteId);
+      if (!q) return;
+      if (q.status === 'Aprovado') return showToast('Este orçamento já foi aprovado e faturado.', true);
+
+      (q.items || []).forEach(item => {
+        const prod = appState.products.find(p => p.id === item.id);
+        if (prod) prod.stock = Math.max(0, Number(prod.stock) - Number(item.qty || 0));
+      });
+
+      const saleId = `VND-${1000 + appState.sales.length + 1}`;
+      const nowStr = new Date().toLocaleString('pt-BR');
+
+      appState.sales.unshift({
+        id: saleId,
+        date: nowStr,
+        customer: q.customer || 'Consumidor Final',
+        payment: q.payment || 'Pix',
+        items: (q.items || []).map(i => ({ ...i })),
+        subtotal: Number(q.subtotal || q.total || 0),
+        discount: Number(q.discount || 0),
+        total: Number(q.total || 0),
+        fromQuoteId: q.id
+      });
+
+      appState.transactions.unshift({
+        id: `TX-${Date.now().toString().slice(-5)}`,
+        date: nowStr,
+        type: 'entrada',
+        desc: `Venda ${saleId} (Orçamento ${q.id})`,
+        method: q.payment || 'Pix',
+        amount: Number(q.total || 0)
+      });
+
+      q.status = 'Aprovado';
+      q.billedSaleId = saleId;
+
+      saveState();
+      renderAllViews();
+      showToast(`Orçamento ${q.id} aprovado! Venda ${saleId} lançada no Caixa e Estoque.`);
+    }
+
+    function loadQuoteIntoPDV(quoteId) {
+      const q = (appState.quotes || []).find(item => item.id === quoteId);
+      if (!q) return;
+      cartItems = (q.items || []).map(i => ({ ...i }));
+      navigateTo('vendas');
+      const custSel = document.getElementById('pdv-customer-select');
+      if (custSel && q.customer) {
+        if (!Array.from(custSel.options).some(o => o.value === q.customer)) {
+          custSel.add(new Option(q.customer, q.customer));
+        }
+        custSel.value = q.customer;
+      }
+      const paySel = document.getElementById('pdv-payment-select');
+      if (paySel && q.payment) paySel.value = q.payment;
+      const discType = document.getElementById('pdv-discount-type');
+      const discVal = document.getElementById('pdv-discount-value');
+      if (discType) discType.value = q.discountType || 'fixed';
+      if (discVal) discVal.value = q.discountRaw ?? q.discount ?? 0;
+      renderPDVCart();
+      showToast(`Orçamento ${q.id} carregado no PDV!`);
+    }
+
+    function sendQuoteToWhatsApp(quoteId) {
+      const q = (appState.quotes || []).find(item => item.id === quoteId);
+      if (!q) return;
+      const storeName = appState.store?.name || 'Eletro Shop';
+      const lines = (q.items || []).map(i => `• ${i.qty}x ${i.name} — ${formatBRL(i.price * i.qty)}`).join('\n');
+      const msg = `*Orçamento ${q.id} • ${storeName}*\nCliente: ${q.customer}\n\n${lines}\n\n${Number(q.discount) > 0 ? `Desconto: -${formatBRL(q.discount)}\n` : ''}*Total: ${formatBRL(q.total)}*\nPagamento: ${q.payment}`;
+
+      toggleWhatsAppWidget(true);
+      switchWhatsAppWidgetTab('quick');
+      document.getElementById('wa-phone-input').value = q.phone || '';
+      document.getElementById('wa-message-input').value = msg;
+    }
+
+    function deleteQuoteRecord(quoteId) {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      appState.quotes = (appState.quotes || []).filter(q => q.id !== quoteId);
+      saveState();
+      renderAllViews();
+      showToast('Orçamento excluído.');
+    }
+
+    function renderQuotesTable() {
+      const quotes = appState.quotes || [];
+      const pending = quotes.filter(q => q.status !== 'Aprovado');
+      const approved = quotes.filter(q => q.status === 'Aprovado');
+      const pendingSum = pending.reduce((a, b) => a + Number(b.total || 0), 0);
+      const approvedSum = approved.reduce((a, b) => a + Number(b.total || 0), 0);
+      const convRate = quotes.length > 0 ? Math.round((approved.length / quotes.length) * 100) : 0;
+
+      const pCountEl = document.getElementById('quotes-kpi-pending-count');
+      if (pCountEl) {
+        pCountEl.textContent = pending.length;
+        document.getElementById('quotes-kpi-pending-total').textContent = `Total em negociação: ${formatBRL(pendingSum)}`;
+        document.getElementById('quotes-kpi-approved-count').textContent = approved.length;
+        document.getElementById('quotes-kpi-approved-total').textContent = `Faturado via orçamento: ${formatBRL(approvedSum)}`;
+        document.getElementById('quotes-kpi-conversion').textContent = `${convRate}%`;
+      }
+
+      const tbody = document.getElementById('quotes-table-body');
+      if (!tbody) return;
+      const filter = document.getElementById('quotes-status-filter')?.value || 'all';
+      const filtered = quotes.filter(q => filter === 'all' || (q.status || 'Pendente') === filter);
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-500">Nenhum orçamento encontrado para este filtro.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(q => {
+        const isApproved = q.status === 'Aprovado';
+        return `
+          <tr class="hover:bg-slate-800/40">
+            <td class="py-3 px-3 font-mono text-slate-300">
+              <div class="font-bold text-white">${escapeHtmlStr(q.id)}</div>
+              <div class="text-[10px] text-slate-500">${escapeHtmlStr(q.date)}</div>
+            </td>
+            <td class="py-3 px-3">
+              <div class="font-semibold text-white">${escapeHtmlStr(q.customer)}</div>
+              ${q.phone ? `<div class="text-[10px] text-slate-400 font-mono">${escapeHtmlStr(q.phone)}</div>` : ''}
+            </td>
+            <td class="py-3 px-3 text-slate-300 max-w-xs truncate">${(q.items || []).map(i => `${i.qty}x ${escapeHtmlStr(i.name)}`).join(', ')}</td>
+            <td class="py-3 px-3 text-center">
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${isApproved ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-300'}">${escapeHtmlStr(q.status || 'Pendente')}</span>
+            </td>
+            <td class="py-3 px-3 text-right font-bold text-white tabular-nums">${formatBRL(q.total)}</td>
+            <td class="py-3 px-3 text-right space-x-2 whitespace-nowrap">
+              ${!isApproved ? `<button onclick="approveAndBillQuote('${q.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold transition">Aprovar & Faturar</button>` : ''}
+              <button onclick="loadQuoteIntoPDV('${q.id}')" class="text-sky-400 hover:underline font-semibold">PDV</button>
+              <button onclick="printQuoteByIdPDF('${q.id}')" class="text-slate-300 hover:underline font-semibold">PDF</button>
+              <button onclick="sendQuoteToWhatsApp('${q.id}')" class="text-emerald-400 hover:underline font-semibold">WhatsApp</button>
+              <button onclick="editQuoteRecord('${q.id}')" class="text-amber-300 hover:underline">Editar</button>
+              <button onclick="deleteQuoteRecord('${q.id}')" class="text-red-400 hover:underline">Excluir</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function printQuoteByIdPDF(quoteId) {
+      const q = (appState.quotes || []).find(item => item.id === quoteId);
+      if (q) printQuoteDocumentPDF(q);
+    }
+
+    function printQuoteDocumentPDF(quote) {
       const storeName = appState.store?.name || 'Eletro Shop';
       const storeCnpj = appState.store?.cnpj || '';
+      const accentColor = appState.store?.badgeColor || '#3b82f6';
       const win = window.open('', '_blank');
-      if (!win) return showToast('Permita pop-ups para visualizar o PDF.', true);
+      if (!win) return showToast('Permita pop-ups para gerar o PDF do orçamento.', true);
+
+      const rowsHtml = (quote.items || []).map(i => `
+        <tr>
+          <td>${escapeHtmlStr(i.name)}</td>
+          <td style="text-align:center;">${i.qty}</td>
+          <td style="text-align:right;">${formatBRL(i.price)}</td>
+          <td style="text-align:right;font-weight:700;">${formatBRL(Number(i.price) * Number(i.qty))}</td>
+        </tr>
+      `).join('');
 
       win.document.write(`
         <!DOCTYPE html>
         <html lang="pt-BR">
-          <head>
-            <meta charset="UTF-8">
-            <title>Orçamento • ${escapeHtmlStr(storeName)}</title>
-            <style>
-              body { font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; color: #0f172a; max-width: 780px; margin: 0 auto; }
-              .header { display: flex; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 18px; }
-              table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 18px; }
-              th, td { border-bottom: 1px solid #e2e8f0; padding: 8px; text-align: left; }
-              th { background: #f1f5f9; }
-              .text-right { text-align: right; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
+        <head>
+          <meta charset="UTF-8" />
+          <title>Orçamento ${escapeHtmlStr(quote.id)} • ${escapeHtmlStr(storeName)}</title>
+          <style>
+            body { font-family: 'Inter', Arial, sans-serif; color: #0f172a; padding: 32px; margin: 0; }
+            .box { max-width: 780px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 12px; padding: 28px; }
+            .head { display: flex; justify-content: space-between; border-bottom: 3px solid ${accentColor}; padding-bottom: 16px; margin-bottom: 20px; }
+            .head h1 { margin: 0; font-size: 22px; }
+            .meta { font-size: 12px; color: #475569; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 12px; }
+            th, td { border: 1px solid #e2e8f0; padding: 9px 11px; text-align: left; }
+            th { background: #f8fafc; font-weight: 700; text-transform: uppercase; font-size: 10px; color: #475569; }
+            .totals { text-align: right; font-size: 13px; space-y: 4px; }
+            .grand { font-size: 18px; font-weight: 800; color: ${accentColor}; margin-top: 6px; }
+            @media print { body { padding: 0; } .box { border: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="box">
+            <div class="head">
               <div>
-                <h2 style="margin:0;">${escapeHtmlStr(storeName)}</h2>
-                <p style="margin:4px 0 0;font-size:12px;color:#475569;">${storeCnpj ? `CNPJ: ${escapeHtmlStr(storeCnpj)} • ` : ''}Orçamento de Mercadorias</p>
+                <h1>${escapeHtmlStr(storeName)}</h1>
+                ${storeCnpj ? `<div class="meta">CNPJ: ${escapeHtmlStr(storeCnpj)}</div>` : ''}
+                <div class="meta">Cliente: <strong>${escapeHtmlStr(quote.customer)}</strong> ${quote.phone ? `• Tel: ${escapeHtmlStr(quote.phone)}` : ''}</div>
               </div>
-              <div style="text-align:right;font-size:12px;">
-                <strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}<br>
-                <strong>Validade:</strong> 7 dias
+              <div style="text-align:right;">
+                <div style="font-weight:800;color:${accentColor};font-size:14px;">ORÇAMENTO ${escapeHtmlStr(quote.id)}</div>
+                <div class="meta">Emissão: ${escapeHtmlStr(quote.date)}</div>
+                ${quote.validUntil ? `<div class="meta">Validade: ${escapeHtmlStr(quote.validUntil)}</div>` : ''}
+                <div class="meta">Pagamento: ${escapeHtmlStr(quote.payment || 'Pix')}</div>
               </div>
             </div>
-            <p style="font-size:13px;"><strong>Cliente:</strong> ${escapeHtmlStr(customer)}</p>
             <table>
               <thead>
-                <tr><th>Item</th><th>Qtd.</th><th class="text-right">Unitário</th><th class="text-right">Subtotal</th></tr>
+                <tr><th>Descrição do Produto</th><th style="text-align:center;">Qtd.</th><th style="text-align:right;">Unitário</th><th style="text-align:right;">Subtotal</th></tr>
               </thead>
-              <tbody>
-                ${cartItems.map(i => `<tr><td>${escapeHtmlStr(i.name)}</td><td>${i.qty}</td><td class="text-right">${formatBRL(i.price)}</td><td class="text-right"><strong>${formatBRL(i.price * i.qty)}</strong></td></tr>`).join('')}
-              </tbody>
+              <tbody>${rowsHtml}</tbody>
             </table>
-            <div style="text-align:right;font-size:13px;line-height:1.8;">
-              <div>Subtotal: <strong>${formatBRL(subtotal)}</strong></div>
-              ${discountAmount > 0 ? `<div style="color:#059669;">Desconto Aplicado: <strong>- ${formatBRL(discountAmount)}</strong></div>` : ''}
-              <div style="font-size:17px;margin-top:6px;">Total do Orçamento: <strong>${formatBRL(total)}</strong></div>
+            <div class="totals">
+              <div>Subtotal: <strong>${formatBRL(quote.subtotal || quote.total)}</strong></div>
+              ${Number(quote.discount) > 0 ? `<div style="color:#059669;">Desconto: <strong>- ${formatBRL(quote.discount)}</strong></div>` : ''}
+              <div class="grand">Total do Orçamento: ${formatBRL(quote.total)}</div>
             </div>
-          </body>
+            ${quote.notes ? `<p style="font-size:12px;color:#475569;margin-top:18px;border-top:1px dashed #cbd5e1;padding-top:10px;"><strong>Observações:</strong> ${escapeHtmlStr(quote.notes)}</p>` : ''}
+          </div>
+        </body>
         </html>
       `);
       win.document.close();
       setTimeout(() => win.print(), 350);
+    }
+
+    // ==================== CUSTOS & DESPESAS DA LOJA (SINCRONIZADO) ====================
+    function ensureAllPaidCostsSyncedToCash() {
+      if (!Array.isArray(appState.costs)) appState.costs = [];
+      if (!Array.isArray(appState.transactions)) appState.transactions = [];
+
+      appState.costs.forEach(cost => {
+        if ((cost.status || 'Pago') === 'Pago') {
+          const existingTx = appState.transactions.find(t => t.costId === cost.id);
+          if (!existingTx) {
+            appState.transactions.unshift({
+              id: `TX-CST-${cost.id}`,
+              costId: cost.id,
+              date: cost.date || new Date().toLocaleDateString('pt-BR'),
+              type: 'saida',
+              desc: `Despesa: ${cost.desc} (${cost.category || 'Loja'})`,
+              method: cost.method || 'Pix',
+              amount: Number(cost.actual || 0)
+            });
+          } else {
+            existingTx.desc = `Despesa: ${cost.desc} (${cost.category || 'Loja'})`;
+            existingTx.method = cost.method || 'Pix';
+            existingTx.amount = Number(cost.actual || 0);
+          }
+        } else {
+          appState.transactions = appState.transactions.filter(t => t.costId !== cost.id);
+        }
+      });
+    }
+
+    function saveStoreCost(e) {
+      e.preventDefault();
+      const editId = document.getElementById('cost-edit-id')?.value;
+      const desc = document.getElementById('cost-desc').value.trim();
+      const category = document.getElementById('cost-category').value;
+      const method = document.getElementById('cost-method').value;
+      const status = document.getElementById('cost-status').value;
+      const budget = Number(document.getElementById('cost-budget').value || 0);
+      const actual = Number(document.getElementById('cost-actual').value || 0);
+
+      if (!desc || actual <= 0) return showToast('Preencha a descrição e um valor válido.', true);
+
+      if (!Array.isArray(appState.costs)) appState.costs = [];
+      const costId = editId || `CST-${Date.now().toString().slice(-5)}`;
+      const existing = editId ? appState.costs.find(c => c.id === editId) : null;
+
+      const record = {
+        id: costId,
+        date: existing?.date || new Date().toLocaleDateString('pt-BR'),
+        desc,
+        category,
+        method,
+        status,
+        budget,
+        actual
+      };
+
+      if (editId) {
+        const idx = appState.costs.findIndex(c => c.id === editId);
+        if (idx >= 0) appState.costs[idx] = record;
+      } else {
+        appState.costs.unshift(record);
+      }
+
+      ensureAllPaidCostsSyncedToCash();
+      resetCostForm();
+      saveState();
+      renderAllViews();
+      showToast(status === 'Pago' ? 'Despesa salva e abatida do Caixa!' : 'Despesa pendente registrada!');
+    }
+
+    function editStoreCost(costId) {
+      const c = (appState.costs || []).find(item => item.id === costId);
+      if (!c) return;
+      document.getElementById('cost-edit-id').value = c.id;
+      document.getElementById('cost-form-title').textContent = `Editando Despesa: ${c.desc}`;
+      document.getElementById('cost-cancel-edit-btn')?.classList.remove('hidden');
+      document.getElementById('cost-desc').value = c.desc;
+      document.getElementById('cost-category').value = c.category || 'Despesa Fixa';
+      document.getElementById('cost-method').value = c.method || 'Pix';
+      document.getElementById('cost-status').value = c.status || 'Pago';
+      document.getElementById('cost-budget').value = Number(c.budget || 0);
+      document.getElementById('cost-actual').value = Number(c.actual || 0);
+      document.getElementById('cost-submit-btn').textContent = 'Atualizar';
+    }
+
+    function resetCostForm() {
+      const idEl = document.getElementById('cost-edit-id');
+      if (idEl) idEl.value = '';
+      const titleEl = document.getElementById('cost-form-title');
+      if (titleEl) titleEl.textContent = 'Lançar Despesa / Custo da Loja';
+      document.getElementById('cost-cancel-edit-btn')?.classList.add('hidden');
+      const descEl = document.getElementById('cost-desc');
+      if (descEl) descEl.value = '';
+      const budEl = document.getElementById('cost-budget');
+      if (budEl) budEl.value = '';
+      const actEl = document.getElementById('cost-actual');
+      if (actEl) actEl.value = '';
+      const btnEl = document.getElementById('cost-submit-btn');
+      if (btnEl) btnEl.textContent = 'Salvar';
+    }
+
+    function markCostAsPaid(costId) {
+      const c = (appState.costs || []).find(item => item.id === costId);
+      if (!c) return;
+      c.status = 'Pago';
+      ensureAllPaidCostsSyncedToCash();
+      saveState();
+      renderAllViews();
+      showToast(`Despesa "${c.desc}" baixada e lançada no Caixa!`);
+    }
+
+    function deleteCost(id) {
+      if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
+      appState.costs = (appState.costs || []).filter(c => c.id !== id);
+      appState.transactions = (appState.transactions || []).filter(t => t.costId !== id);
+      saveState();
+      renderAllViews();
+      showToast('Despesa removida e estornada do Caixa.');
+    }
+
+    function renderCostsTable() {
+      const costs = appState.costs || [];
+      const paidTotal = costs.filter(c => (c.status || 'Pago') === 'Pago').reduce((a, b) => a + Number(b.actual || 0), 0);
+      const pendingTotal = costs.filter(c => c.status === 'Pendente').reduce((a, b) => a + Number(b.actual || 0), 0);
+      const budgetTotal = costs.reduce((a, b) => a + Number(b.budget || 0), 0);
+      const actualTotal = costs.reduce((a, b) => a + Number(b.actual || 0), 0);
+      const variance = budgetTotal - actualTotal;
+
+      const paidEl = document.getElementById('costs-kpi-paid');
+      if (paidEl) {
+        paidEl.textContent = formatBRL(paidTotal);
+        document.getElementById('costs-kpi-pending').textContent = formatBRL(pendingTotal);
+        const varEl = document.getElementById('costs-kpi-variance');
+        varEl.textContent = formatBRL(variance);
+        varEl.className = `text-2xl font-extrabold mt-1 tabular-nums ${variance >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+        document.getElementById('costs-kpi-budget-sub').textContent = `Previsão orçamentária: ${formatBRL(budgetTotal)}`;
+      }
+
+      const tbody = document.getElementById('costs-table-body');
+      if (!tbody) return;
+      const filter = document.getElementById('costs-filter-select')?.value || 'all';
+      const filtered = costs.filter(c => filter === 'all' || (c.status || 'Pago') === filter);
+      const canManage = isManagerOrMaster();
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-500">Nenhuma despesa cadastrada para este filtro.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(c => {
+        const isPaid = (c.status || 'Pago') === 'Pago';
+        return `
+          <tr class="hover:bg-slate-800/40">
+            <td class="py-3 px-3 text-slate-400">${escapeHtmlStr(c.date || '-')}</td>
+            <td class="py-3 px-3 font-semibold text-white">${escapeHtmlStr(c.desc)}</td>
+            <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[11px]">${escapeHtmlStr(c.category || 'Geral')}</span></td>
+            <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(c.method || 'Pix')}</td>
+            <td class="py-3 px-3 text-center">
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${isPaid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-300'}">${isPaid ? 'Pago' : 'Pendente'}</span>
+            </td>
+            <td class="py-3 px-3 text-right text-slate-400 tabular-nums">${formatBRL(c.budget)}</td>
+            <td class="py-3 px-3 text-right font-bold text-red-400 tabular-nums">${formatBRL(c.actual)}</td>
+            <td class="py-3 px-3 text-right space-x-2 whitespace-nowrap">
+              ${!isPaid ? `<button onclick="markCostAsPaid('${c.id}')" class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold hover:bg-emerald-500/30">Dar Baixa</button>` : ''}
+              ${canManage ? `<button onclick="editStoreCost('${c.id}')" class="text-sky-400 hover:underline">Editar</button><button onclick="deleteCost('${c.id}')" class="text-red-400 hover:underline">Excluir</button>` : '-'}
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     // ==================== CAIXA & FINANCEIRO ====================
@@ -2500,7 +3161,7 @@
         const canManage = isManagerOrMaster();
         tbody.innerHTML = appState.transactions.map(t => `
           <tr class="hover:bg-slate-800/40">
-            <td class="py-3 px-3 text-slate-400">${formatDisplayDate(t.date)}</td>
+            <td class="py-3 px-3 text-slate-400">${escapeHtmlStr(t.date)}</td>
             <td class="py-3 px-3"><span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${t.type === 'entrada' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}">${t.type}</span></td>
             <td class="py-3 px-3 font-semibold text-white">${escapeHtmlStr(t.desc)}</td>
             <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(t.method || 'Dinheiro')}</td>
@@ -2531,43 +3192,23 @@
       const id = document.getElementById('edit-tx-id').value;
       const idx = appState.transactions.findIndex(t => t.id === id);
       if (idx >= 0) {
-        const updatedTx = {
+        appState.transactions[idx] = {
           ...appState.transactions[idx],
           type: document.getElementById('edit-tx-type').value,
           method: document.getElementById('edit-tx-method').value,
           desc: document.getElementById('edit-tx-desc').value.trim(),
           amount: Number(document.getElementById('edit-tx-amount').value || 0)
         };
-        appState.transactions[idx] = updatedTx;
-
-        if (updatedTx.costId) {
-          const linkedCost = (appState.costs || []).find(c => c.id === updatedTx.costId);
-          if (linkedCost) {
-            linkedCost.actual = updatedTx.amount;
-            linkedCost.method = updatedTx.method;
-          }
-        }
-
         saveState();
         renderAllViews();
         closeModal('modal-edit-tx');
-        showToast('Lançamento atualizado e sincronizado!');
+        showToast('Lançamento atualizado!');
       }
     }
 
     function deleteCashTransaction(txId) {
       if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
-      const targetTx = appState.transactions.find(t => t.id === txId);
       appState.transactions = appState.transactions.filter(t => t.id !== txId);
-
-      if (targetTx?.costId) {
-        const linkedCost = (appState.costs || []).find(c => c.id === targetTx.costId);
-        if (linkedCost) {
-          linkedCost.status = 'Pendente';
-          linkedCost.txId = null;
-        }
-      }
-
       saveState();
       renderAllViews();
       showToast('Lançamento excluído.');
@@ -2586,7 +3227,7 @@
       e.preventDefault();
       appState.transactions.unshift({
         id: `TX-${Date.now().toString().slice(-5)}`,
-        date: new Date().toISOString(),
+        date: new Date().toLocaleString('pt-BR'),
         type: document.getElementById('tx-type').value,
         desc: document.getElementById('tx-desc').value.trim(),
         method: document.getElementById('tx-method')?.value || 'Dinheiro',
@@ -2598,58 +3239,39 @@
       showToast('Movimentação registrada!');
     }
 
-    // ==================== RELATÓRIOS & PDF FECHAMENTO ====================
-    function isDateInPeriod(dateStr, period) {
-      if (period === 'all' || !dateStr) return true;
-      const now = new Date();
-      const dt = new Date(dateStr);
-      if (isNaN(dt.getTime())) return true;
-      if (period === 'today') return dt.toDateString() === now.toDateString();
-      if (period === '7days') return (now - dt) <= 7 * 24 * 60 * 60 * 1000;
-      if (period === '30days') return (now - dt) <= 30 * 24 * 60 * 60 * 1000;
-      return true;
-    }
-
-    function getFilteredSalesByPeriod(period) {
-      return appState.sales.filter(s => isDateInPeriod(s.date, period));
-    }
-
-    function getFilteredCostsByPeriod(period) {
-      return (appState.costs || []).filter(c => isDateInPeriod(c.date, period));
-    }
-
+    // ==================== RELATÓRIO GERENCIAL & PDF FECHAMENTO ====================
     function renderSalesReport() {
       const period = document.getElementById('report-period-select')?.value || 'all';
-      const salesList = getFilteredSalesByPeriod(period);
-      const costsList = getFilteredCostsByPeriod(period);
+      const filteredSales = appState.sales.filter(s => isDateInReportPeriod(s.date, period));
+      const filteredCosts = (appState.costs || []).filter(c => isDateInReportPeriod(c.date, period));
 
-      const netRevenue = salesList.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-      const paidExpenses = costsList.filter(c => (c.status || 'Pago') === 'Pago').reduce((acc, c) => acc + (Number(c.actual) || 0), 0);
-      const pendingExpenses = costsList.filter(c => c.status === 'Pendente').reduce((acc, c) => acc + (Number(c.actual) || 0), 0);
-      const operatingResult = netRevenue - paidExpenses;
+      const netRevenue = filteredSales.reduce((a, b) => a + Number(b.total || 0), 0);
+      const paidExpenses = filteredCosts.filter(c => (c.status || 'Pago') === 'Pago').reduce((a, b) => a + Number(b.actual || 0), 0);
+      const pendingExpenses = filteredCosts.filter(c => c.status === 'Pendente').reduce((a, b) => a + Number(b.actual || 0), 0);
+      const netProfit = netRevenue - paidExpenses;
 
-      const summaryContainer = document.getElementById('report-summary-cards');
-      if (summaryContainer) {
-        summaryContainer.innerHTML = `
-          <div class="erp-card kpi-card p-4">
-            <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">RECEITA LÍQUIDA VENDAS</span>
-            <div class="text-xl font-extrabold text-emerald-400 mt-1 tabular-nums">${formatBRL(netRevenue)}</div>
-            <span class="text-[11px] text-slate-400">${salesList.length} venda(s) no período</span>
+      const summaryBox = document.getElementById('report-summary-cards');
+      if (summaryBox) {
+        summaryBox.innerHTML = `
+          <div class="erp-card kpi-card p-5">
+            <span class="text-[11px] font-bold uppercase text-slate-400">RECEITA LÍQUIDA NO PERÍODO</span>
+            <div class="text-xl font-extrabold text-sky-400 mt-1 tabular-nums">${formatBRL(netRevenue)}</div>
+            <p class="text-[11px] text-slate-400 mt-1">${filteredSales.length} venda(s) no período</p>
           </div>
-          <div class="erp-card kpi-card p-4">
-            <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">DESPESAS DA LOJA (PAGAS)</span>
+          <div class="erp-card kpi-card p-5">
+            <span class="text-[11px] font-bold uppercase text-slate-400">DESPESAS PAGAS (LOJA)</span>
             <div class="text-xl font-extrabold text-red-400 mt-1 tabular-nums">- ${formatBRL(paidExpenses)}</div>
-            <span class="text-[11px] text-slate-400">${costsList.filter(c => (c.status || 'Pago') === 'Pago').length} despesa(s) quitada(s)</span>
+            <p class="text-[11px] text-slate-400 mt-1">Abatidas do saldo de caixa</p>
           </div>
-          <div class="erp-card kpi-card p-4">
-            <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">DESPESAS PENDENTES</span>
+          <div class="erp-card kpi-card p-5">
+            <span class="text-[11px] font-bold uppercase text-slate-400">DESPESAS PENDENTES</span>
             <div class="text-xl font-extrabold text-amber-400 mt-1 tabular-nums">${formatBRL(pendingExpenses)}</div>
-            <span class="text-[11px] text-slate-400">${costsList.filter(c => c.status === 'Pendente').length} conta(s) a pagar</span>
+            <p class="text-[11px] text-slate-400 mt-1">Contas a pagar em aberto</p>
           </div>
-          <div class="erp-card kpi-card p-4">
-            <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">RESULTADO OPERACIONAL</span>
-            <div class="text-xl font-extrabold mt-1 tabular-nums ${operatingResult >= 0 ? 'text-sky-400' : 'text-red-400'}">${formatBRL(operatingResult)}</div>
-            <span class="text-[11px] text-slate-400">Receita Líquida − Despesas Pagas</span>
+          <div class="erp-card kpi-card p-5">
+            <span class="text-[11px] font-bold uppercase text-slate-400">RESULTADO OPERACIONAL LÍQUIDO</span>
+            <div class="text-xl font-extrabold mt-1 tabular-nums ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}">${formatBRL(netProfit)}</div>
+            <p class="text-[11px] text-slate-400 mt-1">Receita líquida − despesas pagas</p>
           </div>
         `;
       }
@@ -2658,28 +3280,24 @@
       if (container) {
         const methods = ['Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro'];
         container.innerHTML = methods.map(m => {
-          const list = salesList.filter(s => String(s.payment).toLowerCase() === m.toLowerCase());
-          const sum = list.reduce((a, b) => a + Number(b.total || 0), 0);
-          return `<div class="erp-card p-4"><span class="text-[11px] font-bold uppercase text-slate-400">${m}</span><div class="text-lg font-extrabold text-white mt-1 tabular-nums">${formatBRL(sum)}</div><span class="text-[11px] text-slate-500">${list.length} venda(s)</span></div>`;
+          const sum = filteredSales.filter(s => String(s.payment).toLowerCase() === m.toLowerCase()).reduce((a, b) => a + Number(b.total || 0), 0);
+          return `<div class="erp-card p-5"><span class="text-xs font-semibold text-slate-400">${m}</span><div class="text-xl font-extrabold text-white mt-1 tabular-nums">${formatBRL(sum)}</div></div>`;
         }).join('');
       }
 
       const historyBody = document.getElementById('sales-history-table-body');
       if (historyBody) {
         const canManage = isManagerOrMaster();
-        if (salesList.length === 0) {
+        if (filteredSales.length === 0) {
           historyBody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-500">Nenhuma venda registrada neste período.</td></tr>`;
         } else {
-          historyBody.innerHTML = salesList.map(sale => `
+          historyBody.innerHTML = filteredSales.map(sale => `
             <tr class="hover:bg-slate-800/40">
-              <td class="py-3 px-3 font-mono text-slate-300"><div>${escapeHtmlStr(sale.id)}</div><div class="text-[10px] text-slate-500">${formatDisplayDate(sale.date)}</div></td>
+              <td class="py-3 px-3 font-mono text-slate-300"><div>${escapeHtmlStr(sale.id)}</div><div class="text-[10px] text-slate-500">${escapeHtmlStr(sale.date)}</div></td>
               <td class="py-3 px-3 font-semibold text-white">${escapeHtmlStr(sale.customer || 'Consumidor Final')}</td>
               <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[11px]">${escapeHtmlStr(sale.payment)}</span></td>
-              <td class="py-3 px-3 text-slate-400">${(sale.items || []).map(i => `${i.qty}x ${escapeHtmlStr(i.name)}`).join(', ')}</td>
-              <td class="py-3 px-3 text-right font-bold text-emerald-400 tabular-nums">
-                ${formatBRL(sale.total)}
-                ${sale.discount > 0 ? `<div class="text-[10px] text-slate-400 font-normal">Desc: -${formatBRL(sale.discount)}</div>` : ''}
-              </td>
+              <td class="py-3 px-3 text-slate-400">${(sale.items || []).map(i => `${i.qty}x ${escapeHtmlStr(i.name)}`).join(', ')}${Number(sale.discount) > 0 ? ` <span class="text-emerald-400">(Desc: -${formatBRL(sale.discount)})</span>` : ''}</td>
+              <td class="py-3 px-3 text-right font-bold text-emerald-400 tabular-nums">${formatBRL(sale.total)}</td>
               <td class="py-3 px-3 text-right">
                 ${canManage ? `<button onclick="deleteSale('${sale.id}')" class="text-red-400 hover:underline font-semibold">Excluir</button>` : '-'}
               </td>
@@ -2690,27 +3308,19 @@
 
       const expBody = document.getElementById('report-expenses-table-body');
       if (expBody) {
-        if (costsList.length === 0) {
-          expBody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-500">Nenhuma despesa da loja registrada neste período.</td></tr>';
+        if (filteredCosts.length === 0) {
+          expBody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">Nenhuma despesa registrada neste período.</td></tr>`;
         } else {
-          expBody.innerHTML = costsList.map(c => {
-            const isPaid = (c.status || 'Pago') === 'Pago';
-            const dt = c.date ? new Date(c.date).toLocaleDateString('pt-BR') : '-';
-            return `
-              <tr class="hover:bg-slate-800/40">
-                <td class="py-3 px-3 text-slate-400">${dt}</td>
-                <td class="py-3 px-3 font-bold text-white">${escapeHtmlStr(c.desc)}</td>
-                <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(c.category || 'Despesa Operacional')}</td>
-                <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(c.method || 'Pix')}</td>
-                <td class="py-3 px-3 text-center">
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isPaid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-300'}">
-                    ${isPaid ? 'Pago' : 'Pendente'}
-                  </span>
-                </td>
-                <td class="py-3 px-3 text-right font-bold tabular-nums ${isPaid ? 'text-red-400' : 'text-amber-300'}">- ${formatBRL(c.actual)}</td>
-              </tr>
-            `;
-          }).join('');
+          expBody.innerHTML = filteredCosts.map(c => `
+            <tr class="hover:bg-slate-800/40">
+              <td class="py-3 px-3 text-slate-400">${escapeHtmlStr(c.date || '-')}</td>
+              <td class="py-3 px-3 font-semibold text-white">${escapeHtmlStr(c.desc)}</td>
+              <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(c.category || 'Geral')}</td>
+              <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(c.method || 'Pix')}</td>
+              <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${(c.status || 'Pago') === 'Pago' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-300'}">${escapeHtmlStr(c.status || 'Pago')}</span></td>
+              <td class="py-3 px-3 text-right font-bold text-red-400 tabular-nums">- ${formatBRL(c.actual)}</td>
+            </tr>
+          `).join('');
         }
       }
     }
@@ -2718,7 +3328,7 @@
     function deleteSale(saleId) {
       if (!isManagerOrMaster()) return showToast('Permissão restrita.', true);
       appState.sales = appState.sales.filter(s => s.id !== saleId);
-      appState.transactions = appState.transactions.filter(t => t.saleId !== saleId && !String(t.desc).includes(saleId));
+      appState.transactions = appState.transactions.filter(t => !String(t.desc || '').includes(saleId));
       saveState();
       renderAllViews();
       showToast('Venda excluída e faturamento sincronizado!');
@@ -2726,221 +3336,149 @@
 
     function printSalesReportPDF() {
       const period = document.getElementById('report-period-select')?.value || 'all';
-      const periodLabels = {
-        today: 'Hoje',
-        '7days': 'Últimos 7 Dias',
-        '30days': 'Últimos 30 Dias',
-        all: 'Todo o Período Consolidado'
-      };
-      const salesList = getFilteredSalesByPeriod(period);
-      const costsList = getFilteredCostsByPeriod(period);
-      const storeName = appState.store?.name || 'Eletro Shop';
-      const cnpj = appState.store?.cnpj || 'Não informado';
-      const protocol = `FECH-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`;
-      const issuedAt = new Date().toLocaleString('pt-BR');
+      const periodLabels = { today: 'Hoje', '7days': 'Últimos 7 Dias', '30days': 'Últimos 30 Dias', all: 'Todo o Período' };
+      const filteredSales = appState.sales.filter(s => isDateInReportPeriod(s.date, period));
+      const filteredCosts = (appState.costs || []).filter(c => isDateInReportPeriod(c.date, period));
 
-      const grossTotal = salesList.reduce((acc, s) => acc + (Number(s.subtotal ?? s.total) || 0), 0);
-      const totalDiscounts = salesList.reduce((acc, s) => acc + (Number(s.discount) || 0), 0);
-      const netRevenue = salesList.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-      const avgTicket = salesList.length > 0 ? netRevenue / salesList.length : 0;
+      const grossRevenue = filteredSales.reduce((a, b) => a + Number(b.subtotal || b.total || 0), 0);
+      const totalDiscounts = filteredSales.reduce((a, b) => a + Number(b.discount || 0), 0);
+      const netRevenue = filteredSales.reduce((a, b) => a + Number(b.total || 0), 0);
+      const avgTicket = filteredSales.length > 0 ? netRevenue / filteredSales.length : 0;
 
-      const paidExpensesTotal = costsList.filter(c => (c.status || 'Pago') === 'Pago').reduce((acc, c) => acc + (Number(c.actual) || 0), 0);
-      const pendingExpensesTotal = costsList.filter(c => c.status === 'Pendente').reduce((acc, c) => acc + (Number(c.actual) || 0), 0);
-      const operatingProfit = netRevenue - paidExpensesTotal;
+      const paidExpenses = filteredCosts.filter(c => (c.status || 'Pago') === 'Pago').reduce((a, b) => a + Number(b.actual || 0), 0);
+      const pendingExpenses = filteredCosts.filter(c => c.status === 'Pendente').reduce((a, b) => a + Number(b.actual || 0), 0);
+      const netOperationalResult = netRevenue - paidExpenses;
 
-      const totalIn = appState.transactions.filter(t => t.type === 'entrada').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-      const totalOut = appState.transactions.filter(t => t.type === 'saida').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-      const initialCash = Number(appState.initialCash) || 0;
-      const finalCash = initialCash + totalIn - totalOut;
+      const totalIn = appState.transactions.filter(t => t.type === 'entrada').reduce((a, b) => a + Number(b.amount || 0), 0);
+      const totalOut = appState.transactions.filter(t => t.type === 'saida').reduce((a, b) => a + Number(b.amount || 0), 0);
+      const cashBalance = Number(appState.initialCash || 0) + totalIn - totalOut;
 
-      const cashIn = appState.transactions.filter(t => t.type === 'entrada' && t.method === 'Dinheiro').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-      const cashOut = appState.transactions.filter(t => t.type === 'saida' && t.method === 'Dinheiro').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-      const physicalDrawerCash = initialCash + cashIn - cashOut;
+      const cashSales = filteredSales.filter(s => String(s.payment).toLowerCase() === 'dinheiro').reduce((a, b) => a + Number(b.total || 0), 0);
+      const cashManualIn = appState.transactions.filter(t => t.type === 'entrada' && String(t.method).toLowerCase() === 'dinheiro' && !String(t.desc).startsWith('Venda ')).reduce((a, b) => a + Number(b.amount || 0), 0);
+      const cashManualOut = appState.transactions.filter(t => t.type === 'saida' && String(t.method).toLowerCase() === 'dinheiro').reduce((a, b) => a + Number(b.amount || 0), 0);
+      const physicalDrawerCash = Number(appState.initialCash || 0) + cashSales + cashManualIn - cashManualOut;
 
       const methods = ['Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro'];
       const paymentRows = methods.map(m => {
-        const list = salesList.filter(s => String(s.payment).toLowerCase() === m.toLowerCase());
-        const val = list.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-        const share = netRevenue > 0 ? ((val / netRevenue) * 100).toFixed(1) : '0.0';
-        return `
-          <tr>
-            <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;">${m}</td>
-            <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:center;">${list.length}</td>
-            <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:center;">${share}%</td>
-            <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;">${formatBRL(val)}</td>
-          </tr>
-        `;
+        const list = filteredSales.filter(s => String(s.payment).toLowerCase() === m.toLowerCase());
+        const sum = list.reduce((a, b) => a + Number(b.total || 0), 0);
+        const pct = netRevenue > 0 ? ((sum / netRevenue) * 100).toFixed(1) : '0.0';
+        return `<tr><td><strong>${m}</strong></td><td style="text-align:center;">${list.length}</td><td style="text-align:center;">${pct}%</td><td style="text-align:right;font-weight:700;">${formatBRL(sum)}</td></tr>`;
       }).join('');
 
-      const salesRows = salesList.length === 0
-        ? '<tr><td colspan="5" style="padding:12px;text-align:center;color:#64748b;">Nenhuma venda registrada no período.</td></tr>'
-        : salesList.map(s => `
-          <tr>
-            <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-weight:600;">${escapeHtmlStr(s.id)}</td>
-            <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${formatDisplayDate(s.date)}</td>
-            <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${escapeHtmlStr(s.customer || 'Consumidor Final')}</td>
-            <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${escapeHtmlStr(s.payment)}</td>
-            <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;">${formatBRL(s.total)}</td>
-          </tr>
-        `).join('');
+      const expenseRows = filteredCosts.length > 0
+        ? filteredCosts.map(c => `<tr><td>${escapeHtmlStr(c.date || '-')}</td><td><strong>${escapeHtmlStr(c.desc)}</strong></td><td>${escapeHtmlStr(c.category || 'Geral')}</td><td>${escapeHtmlStr(c.status || 'Pago')}</td><td style="text-align:right;color:#b91c1c;font-weight:700;">- ${formatBRL(c.actual)}</td></tr>`).join('')
+        : `<tr><td colspan="5" style="text-align:center;color:#64748b;">Nenhuma despesa registrada no período.</td></tr>`;
 
-      const expenseRows = costsList.length === 0
-        ? '<tr><td colspan="5" style="padding:12px;text-align:center;color:#64748b;">Nenhuma despesa da loja registrada no período.</td></tr>'
-        : costsList.map(c => {
-          const isPaid = (c.status || 'Pago') === 'Pago';
-          return `
-            <tr>
-              <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${c.date ? new Date(c.date).toLocaleDateString('pt-BR') : '-'}</td>
-              <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-weight:600;">${escapeHtmlStr(c.desc)}</td>
-              <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${escapeHtmlStr(c.category || 'Operacional')} (${escapeHtmlStr(c.method || 'Pix')})</td>
-              <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:700;color:${isPaid ? '#059669' : '#d97706'};">${isPaid ? 'Pago' : 'Pendente'}</td>
-              <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:#dc2626;">- ${formatBRL(c.actual)}</td>
-            </tr>
-          `;
-        }).join('');
+      const salesRows = filteredSales.length > 0
+        ? filteredSales.map(s => `<tr><td><strong>${escapeHtmlStr(s.id)}</strong><br><span style="font-size:10px;color:#64748b;">${escapeHtmlStr(s.date)}</span></td><td>${escapeHtmlStr(s.customer || 'Consumidor Final')}</td><td>${escapeHtmlStr(s.payment)}</td><td>${(s.items || []).map(i => `${i.qty}x ${escapeHtmlStr(i.name)}`).join(', ')}</td><td style="text-align:right;font-weight:700;">${formatBRL(s.total)}</td></tr>`).join('')
+        : `<tr><td colspan="5" style="text-align:center;color:#64748b;">Nenhuma venda registrada no período.</td></tr>`;
 
-      const lowStockProducts = appState.products.filter(p => (p.stock || 0) <= 5);
-      const lowStockHtml = lowStockProducts.length === 0
-        ? '<p style="font-size:11px;color:#059669;margin:0;">Todos os produtos estão com saldo acima do mínimo operacional.</p>'
-        : `<p style="font-size:11px;color:#b45309;margin:0;"><strong>Reposição Recomendada:</strong> ${lowStockProducts.map(p => `${escapeHtmlStr(p.name)} (${p.stock} un.)`).join(' • ')}</p>`;
+      const storeName = appState.store?.name || 'Eletro Shop';
+      const storeCnpj = appState.store?.cnpj || '00.000.000/0001-00';
+      const accentColor = appState.store?.badgeColor || '#3b82f6';
+      const protocol = `FECH-${Date.now().toString().slice(-6)}`;
 
       const win = window.open('', '_blank');
-      if (!win) return showToast('Permita pop-ups no navegador para abrir o PDF.', true);
+      if (!win) return showToast('Permita pop-ups no navegador para gerar o PDF.', true);
 
       win.document.write(`
         <!DOCTYPE html>
         <html lang="pt-BR">
         <head>
-          <meta charset="UTF-8">
-          <title>Fechamento de Caixa - ${escapeHtmlStr(storeName)}</title>
+          <meta charset="UTF-8" />
+          <title>Fechamento de Caixa • ${escapeHtmlStr(storeName)}</title>
           <style>
-            @media print { .no-print { display: none !important; } body { padding: 0; } }
-            body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; background: #fff; margin: 0; padding: 24px; }
-            .sheet { max-width: 820px; margin: 0 auto; }
+            @page { size: A4; margin: 14mm; }
+            body { font-family: 'Inter', Arial, sans-serif; color: #0f172a; background: #fff; margin: 0; font-size: 11px; line-height: 1.45; }
+            .toolbar { background: #0f172a; color: #fff; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; }
+            .toolbar button { background: ${accentColor}; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+            .page { max-width: 820px; margin: 16px auto; padding: 24px; border: 1px solid #cbd5e1; border-radius: 10px; }
+            .header { display: flex; justify-content: space-between; border-bottom: 3px solid ${accentColor}; padding-bottom: 14px; margin-bottom: 18px; }
+            .header h1 { margin: 0; font-size: 20px; font-weight: 800; }
+            .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+            .card { border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; background: #f8fafc; }
+            .card .lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #64748b; }
+            .card .val { font-size: 15px; font-weight: 800; margin-top: 3px; }
+            h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #1e293b; border-left: 4px solid ${accentColor}; padding-left: 8px; margin: 18px 0 8px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+            th, td { border: 1px solid #cbd5e1; padding: 7px 9px; text-align: left; vertical-align: top; }
+            th { background: #f1f5f9; font-weight: 700; font-size: 9.5px; text-transform: uppercase; color: #334155; }
+            .signatures { display: grid; grid-template-columns: repeat(2, 1fr); gap: 36px; margin-top: 42px; page-break-inside: avoid; }
+            .sig-box { text-align: center; }
+            .sig-line { border-top: 1.5px solid #0f172a; padding-top: 6px; font-weight: 700; font-size: 11px; }
+            .sig-role { font-size: 9.5px; color: #475569; margin-top: 2px; }
+            @media print { .toolbar { display: none !important; } .page { border: none; margin: 0; padding: 0; } }
           </style>
         </head>
         <body>
-          <div class="no-print" style="max-width:820px;margin:0 auto 16px;padding:12px 16px;background:#0f172a;color:#fff;border-radius:10px;display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:13px;font-weight:600;">Relatório Executivo de Fechamento & Resultado Operacional</span>
-            <button onclick="window.print()" style="background:#3b82f6;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:700;cursor:pointer;">Imprimir / Salvar PDF</button>
+          <div class="toolbar">
+            <span>Pré-visualização do Relatório Executivo & Fechamento de Caixa</span>
+            <button onclick="window.print()">Imprimir / Salvar PDF</button>
           </div>
-
-          <div class="sheet">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0f172a;padding-bottom:14px;margin-bottom:18px;">
+          <div class="page">
+            <div class="header">
               <div>
-                <div style="font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#3b82f6;">Relatório Gerencial de Fechamento</div>
-                <h1 style="margin:3px 0;font-size:22px;color:#0f172a;">${escapeHtmlStr(storeName)}</h1>
-                <div style="font-size:11px;color:#475569;">CNPJ: ${escapeHtmlStr(cnpj)} &nbsp;|&nbsp; Período: <strong>${periodLabels[period] || period}</strong></div>
+                <h1>${escapeHtmlStr(storeName)}</h1>
+                <div style="color:#475569;font-size:11px;margin-top:3px;">CNPJ: ${escapeHtmlStr(storeCnpj)} • Relatório Gerencial & Fechamento de Caixa</div>
               </div>
-              <div style="text-align:right;font-size:11px;color:#334155;line-height:1.6;">
+              <div style="text-align:right;font-size:10.5px;color:#334155;">
                 <div><strong>Protocolo:</strong> ${protocol}</div>
-                <div><strong>Emissão:</strong> ${issuedAt}</div>
+                <div><strong>Período:</strong> ${periodLabels[period] || 'Todo o Período'}</div>
+                <div><strong>Emissão:</strong> ${new Date().toLocaleString('pt-BR')}</div>
+                <div><strong>Operador:</strong> ${escapeHtmlStr(currentUser?.name || 'Sistema')}</div>
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;">
-              <div style="border:1px solid #cbd5e1;border-radius:8px;padding:10px;background:#f8fafc;">
-                <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Receita Líquida</div>
-                <div style="font-size:16px;font-weight:800;margin-top:4px;color:#059669;">${formatBRL(netRevenue)}</div>
-                <div style="font-size:10px;color:#64748b;">Bruto: ${formatBRL(grossTotal)} | Desc: -${formatBRL(totalDiscounts)}</div>
-              </div>
-              <div style="border:1px solid #cbd5e1;border-radius:8px;padding:10px;background:#f8fafc;">
-                <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Despesas da Loja</div>
-                <div style="font-size:16px;font-weight:800;margin-top:4px;color:#dc2626;">- ${formatBRL(paidExpensesTotal)}</div>
-                <div style="font-size:10px;color:#64748b;">A pagar: ${formatBRL(pendingExpensesTotal)}</div>
-              </div>
-              <div style="border:1px solid #cbd5e1;border-radius:8px;padding:10px;background:#f8fafc;">
-                <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Resultado Líquido</div>
-                <div style="font-size:16px;font-weight:800;margin-top:4px;color:${operatingProfit >= 0 ? '#1d4ed8' : '#dc2626'};">${formatBRL(operatingProfit)}</div>
-                <div style="font-size:10px;color:#64748b;">Ticket Médio: ${formatBRL(avgTicket)}</div>
-              </div>
-              <div style="border:1px solid #cbd5e1;border-radius:8px;padding:10px;background:#f8fafc;">
-                <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Saldo Final Caixa</div>
-                <div style="font-size:16px;font-weight:800;margin-top:4px;color:#0f172a;">${formatBRL(finalCash)}</div>
-                <div style="font-size:10px;color:#64748b;">Gaveta Dinheiro: ${formatBRL(physicalDrawerCash)}</div>
-              </div>
+            <div class="grid-4">
+              <div class="card"><div class="lbl">Receita Líquida</div><div class="val" style="color:#0284c7;">${formatBRL(netRevenue)}</div></div>
+              <div class="card"><div class="lbl">Despesas Pagas</div><div class="val" style="color:#dc2626;">- ${formatBRL(paidExpenses)}</div></div>
+              <div class="card"><div class="lbl">Resultado Líquido</div><div class="val" style="color:${netOperationalResult >= 0 ? '#059669' : '#dc2626'};">${formatBRL(netOperationalResult)}</div></div>
+              <div class="card"><div class="lbl">Saldo em Caixa</div><div class="val">${formatBRL(cashBalance)}</div></div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-bottom:18px;">
-              <div style="border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;">
-                <div style="background:#0f172a;color:#fff;padding:7px 10px;font-size:11px;font-weight:700;text-transform:uppercase;">Recebimentos por Modalidade</div>
-                <table style="width:100%;border-collapse:collapse;font-size:11px;">
-                  <thead>
-                    <tr style="background:#f1f5f9;color:#475569;">
-                      <th style="padding:6px 10px;text-align:left;">Modalidade</th>
-                      <th style="padding:6px 10px;text-align:center;">Qtd.</th>
-                      <th style="padding:6px 10px;text-align:center;">Part.</th>
-                      <th style="padding:6px 10px;text-align:right;">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>${paymentRows}</tbody>
-                </table>
+            <h3>1. Receitas por Modalidade de Pagamento</h3>
+            <table>
+              <thead><tr><th>Modalidade</th><th style="text-align:center;">Qtd. Vendas</th><th style="text-align:center;">Part. %</th><th style="text-align:right;">Total Recebido</th></tr></thead>
+              <tbody>
+                ${paymentRows}
+                <tr style="background:#f8fafc;"><td><strong>TOTAL LÍQUIDO DE VENDAS</strong></td><td style="text-align:center;"><strong>${filteredSales.length}</strong></td><td style="text-align:center;"><strong>100%</strong></td><td style="text-align:right;font-weight:800;">${formatBRL(netRevenue)}</td></tr>
+              </tbody>
+            </table>
+
+            <h3>2. Conferência de Gaveta & Caixa Físico</h3>
+            <table>
+              <tbody>
+                <tr><td>Saldo Inicial de Abertura</td><td style="text-align:right;font-weight:700;">${formatBRL(appState.initialCash)}</td></tr>
+                <tr><td>(+) Vendas Recebidas em Dinheiro no Período</td><td style="text-align:right;color:#059669;font-weight:700;">+ ${formatBRL(cashSales)}</td></tr>
+                <tr><td>(+) Suprimentos / Entradas Manuais em Dinheiro</td><td style="text-align:right;color:#059669;font-weight:700;">+ ${formatBRL(cashManualIn)}</td></tr>
+                <tr><td>(-) Sangrias / Despesas Pagas em Dinheiro</td><td style="text-align:right;color:#dc2626;font-weight:700;">- ${formatBRL(cashManualOut)}</td></tr>
+                <tr style="background:#f1f5f9;"><td><strong>DINHEIRO FÍSICO ESPERADO NA GAVETA</strong></td><td style="text-align:right;font-weight:800;font-size:12px;">${formatBRL(physicalDrawerCash)}</td></tr>
+              </tbody>
+            </table>
+
+            <h3>3. Despesas & Custos Operacionais da Loja (${filteredCosts.length})</h3>
+            <table>
+              <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Status</th><th style="text-align:right;">Valor</th></tr></thead>
+              <tbody>${expenseRows}</tbody>
+            </table>
+            <div style="text-align:right;font-size:11px;margin-bottom:12px;">Total Despesas Pagas: <strong>${formatBRL(paidExpenses)}</strong> • Despesas Pendentes: <strong>${formatBRL(pendingExpenses)}</strong></div>
+
+            <h3>4. Relação de Vendas Realizadas (${filteredSales.length})</h3>
+            <table>
+              <thead><tr><th>Código / Data</th><th>Cliente</th><th>Pagamento</th><th>Itens</th><th style="text-align:right;">Total</th></tr></thead>
+              <tbody>${salesRows}</tbody>
+            </table>
+            <div style="text-align:right;font-size:10.5px;color:#475569;">Subtotal Bruto: ${formatBRL(grossRevenue)} • Descontos Concedidos: ${formatBRL(totalDiscounts)} • Ticket Médio: ${formatBRL(avgTicket)}</div>
+
+            <div class="signatures">
+              <div class="sig-box">
+                <div class="sig-line">Gerência Operacional</div>
+                <div class="sig-role">Conferência de Caixa & Turno • ${escapeHtmlStr(storeName)}</div>
               </div>
-
-              <div style="border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;">
-                <div style="background:#0f172a;color:#fff;padding:7px 10px;font-size:11px;font-weight:700;text-transform:uppercase;">Conciliação de Gaveta</div>
-                <div style="padding:10px;font-size:11px;line-height:1.85;">
-                  <div style="display:flex;justify-content:space-between;"><span>Fundo Inicial de Caixa:</span><strong>${formatBRL(initialCash)}</strong></div>
-                  <div style="display:flex;justify-content:space-between;color:#059669;"><span>(+) Total de Entradas:</span><strong>${formatBRL(totalIn)}</strong></div>
-                  <div style="display:flex;justify-content:space-between;color:#dc2626;"><span>(-) Saídas & Despesas Pagas:</span><strong>${formatBRL(totalOut)}</strong></div>
-                  <div style="border-top:1px dashed #cbd5e1;margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-size:12px;">
-                    <span>Dinheiro Físico Esperado:</span><strong>${formatBRL(physicalDrawerCash)}</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style="border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;margin-bottom:14px;">
-              <div style="background:#0f172a;color:#fff;padding:7px 10px;font-size:11px;font-weight:700;text-transform:uppercase;">Relação Analítica de Vendas (${salesList.length})</div>
-              <table style="width:100%;border-collapse:collapse;font-size:11px;">
-                <thead>
-                  <tr style="background:#f1f5f9;color:#475569;">
-                    <th style="padding:6px 8px;text-align:left;">Código</th>
-                    <th style="padding:6px 8px;text-align:left;">Data/Hora</th>
-                    <th style="padding:6px 8px;text-align:left;">Cliente</th>
-                    <th style="padding:6px 8px;text-align:left;">Pagamento</th>
-                    <th style="padding:6px 8px;text-align:right;">Valor Líquido</th>
-                  </tr>
-                </thead>
-                <tbody>${salesRows}</tbody>
-              </table>
-            </div>
-
-            <div style="border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;margin-bottom:14px;">
-              <div style="background:#1e293b;color:#fff;padding:7px 10px;font-size:11px;font-weight:700;text-transform:uppercase;">Despesas & Custos da Loja no Período (${costsList.length})</div>
-              <table style="width:100%;border-collapse:collapse;font-size:11px;">
-                <thead>
-                  <tr style="background:#f1f5f9;color:#475569;">
-                    <th style="padding:6px 8px;text-align:left;">Data</th>
-                    <th style="padding:6px 8px;text-align:left;">Descrição</th>
-                    <th style="padding:6px 8px;text-align:left;">Categoria / Forma</th>
-                    <th style="padding:6px 8px;text-align:center;">Status</th>
-                    <th style="padding:6px 8px;text-align:right;">Valor</th>
-                  </tr>
-                </thead>
-                <tbody>${expenseRows}</tbody>
-              </table>
-            </div>
-
-            <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;background:#f8fafc;margin-bottom:26px;">
-              ${lowStockHtml}
-            </div>
-
-            <div style="border-top:1px solid #cbd5e1;padding-top:12px;">
-              <p style="font-size:10px;color:#475569;margin:0 0 36px;text-align:center;">
-                Declaramos que os valores de vendas, despesas e saldos discriminados neste relatório conferem com os comprovantes fiscais, recebimentos eletrônicos e numerário em caixa.
-              </p>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;max-width:620px;margin:0 auto;text-align:center;">
-                <div>
-                  <div style="border-top:1px solid #0f172a;padding-top:6px;font-size:12px;font-weight:700;">Gerência Operacional</div>
-                  <div style="font-size:10px;color:#64748b;margin-top:2px;">Conferência de Caixa, Despesas e Estoque</div>
-                  <div style="font-size:10px;color:#64748b;margin-top:6px;">Data: ____/____/20____</div>
-                </div>
-                <div>
-                  <div style="border-top:1px solid #0f172a;padding-top:6px;font-size:12px;font-weight:700;">Controle Financeiro / Diretoria</div>
-                  <div style="font-size:10px;color:#64748b;margin-top:2px;">Visto de Auditoria e Encerramento</div>
-                  <div style="font-size:10px;color:#64748b;margin-top:6px;">Data: ____/____/20____</div>
-                </div>
+              <div class="sig-box">
+                <div class="sig-line">Controle Financeiro / Diretoria</div>
+                <div class="sig-role">Auditoria & Validação Executiva</div>
               </div>
             </div>
           </div>
@@ -2948,862 +3486,23 @@
         </html>
       `);
       win.document.close();
+      setTimeout(() => win.print(), 400);
     }
 
-    // ==================== ASSISTENTE IA OPERACIONAL (ESTOQUE + PESQUISA WEB) ====================
-    function toggleAssistenteOnlineMode() {
-      assistenteOnlineEnabled = !assistenteOnlineEnabled;
-      const btn = document.getElementById('ai-online-toggle-btn');
-      const dot = document.getElementById('ai-online-dot');
-      const label = document.getElementById('ai-online-label');
-      if (btn && dot && label) {
-        if (assistenteOnlineEnabled) {
-          btn.className = 'px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-xs font-bold text-emerald-300 flex items-center gap-1.5 transition';
-          dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
-          label.textContent = 'Pesquisa Online: Ativa';
-        } else {
-          btn.className = 'px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-400 flex items-center gap-1.5 transition';
-          dot.className = 'w-2 h-2 rounded-full bg-slate-500';
-          label.textContent = 'Pesquisa Online: Somente Estoque';
-        }
-      }
-    }
-
-    function clearAssistenteChat() {
-      const box = document.getElementById('assistente-chat-messages');
-      if (box) {
-        box.innerHTML = `
-          <div class="p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700/80 text-slate-200 max-w-2xl">
-            <div class="font-bold text-sky-400 mb-1">Assistente IA Operacional</div>
-            Conversa limpa! Pergunte sobre estoque, orçamentos, despesas da loja ou qualquer material técnico.
-          </div>
-        `;
-      }
-    }
-
-    function askAssistenteQuick(question) {
-      const input = document.getElementById('assistente-input');
-      if (input) {
-        input.value = question;
-        handleAssistenteSubmit(new Event('submit'));
-      }
-    }
-
-    async function searchWebTechnicalKnowledge(query) {
-      const cleanTerm = query
-        .replace(/^(o que é|o que e|para que serve|pesquise|pesquisar|buscar|qual|quais|diferença entre|diferenca entre)\s+/i, '')
-        .replace(/[?!.]+$/g, '')
-        .trim();
-
-      const results = [];
-
-      // 1. Consulta Wikipedia PT-BR API
-      try {
-        const wikiSearchUrl = `https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(cleanTerm)}&format=json&origin=*&srlimit=1`;
-        const searchRes = await fetch(wikiSearchUrl);
-        if (searchRes.ok) {
-          const searchJson = await searchRes.json();
-          const topHit = searchJson?.query?.search?.[0];
-          if (topHit?.title) {
-            const summaryUrl = `https://pt.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topHit.title)}`;
-            const sumRes = await fetch(summaryUrl);
-            if (sumRes.ok) {
-              const sumJson = await sumRes.json();
-              if (sumJson?.extract) {
-                results.push({
-                  source: 'Enciclopédia Técnica (Wikipedia PT)',
-                  title: sumJson.title,
-                  text: sumJson.extract.slice(0, 380) + (sumJson.extract.length > 380 ? '...' : '')
-                });
-              }
-            }
-          }
-        }
-      } catch {}
-
-      // 2. Consulta DuckDuckGo Instant Answer API
-      try {
-        const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(cleanTerm)}&format=json&no_html=1&skip_disambig=1`;
-        const ddgRes = await fetch(ddgUrl);
-        if (ddgRes.ok) {
-          const ddgJson = await ddgRes.json();
-          if (ddgJson?.AbstractText) {
-            results.push({
-              source: 'Resumo Web (DuckDuckGo)',
-              title: ddgJson.Heading || cleanTerm,
-              text: ddgJson.AbstractText.slice(0, 340)
-            });
-          }
-        }
-      } catch {}
-
-      return { cleanTerm, results };
-    }
-
-    async function handleAssistenteSubmit(event) {
-      event.preventDefault();
-      const input = document.getElementById('assistente-input');
-      const chatBox = document.getElementById('assistente-chat-messages');
-      const sendBtn = document.getElementById('assistente-send-btn');
-      const question = (input?.value || '').trim();
-      if (!question || !chatBox) return;
-
-      chatBox.innerHTML += `
-        <div class="flex justify-end">
-          <div class="p-3 rounded-2xl bg-sky-600 text-white font-medium max-w-xl shadow">${escapeHtmlStr(question)}</div>
-        </div>
-      `;
-      input.value = '';
-      if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Pesquisando...'; }
-
-      const typingId = `typing-${Date.now()}`;
-      chatBox.innerHTML += `
-        <div id="${typingId}" class="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/70 text-slate-400 max-w-md animate-pulse">
-          Consultando dados da loja e fontes online...
-        </div>
-      `;
-      chatBox.scrollTop = chatBox.scrollHeight;
-
-      const qLower = question.toLowerCase();
-      let responseBlocks = [];
-
-      // 1. Consulta Orçamentos
-      if (qLower.includes('orcamento') || qLower.includes('orçamento')) {
-        const pendingQuotes = (appState.quotes || []).filter(q => q.status === 'Pendente');
-        const pendingSum = pendingQuotes.reduce((acc, q) => acc + (Number(q.total) || 0), 0);
-        responseBlocks.push(`
-          <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
-            <div class="text-[10px] font-bold uppercase tracking-wider text-amber-300">Orçamentos Comerciais</div>
-            <p class="text-slate-200">Você possui <strong>${pendingQuotes.length} orçamento(s) em aberto</strong> totalizando <strong>${formatBRL(pendingSum)}</strong>.</p>
-          </div>
-        `);
-      }
-
-      // 2. Consulta Custos & Despesas e Resumo Financeiro
-      if (qLower.includes('despesa') || qLower.includes('custo') || qLower.includes('gasto') || qLower.includes('financeiro') || qLower.includes('resumo')) {
-        const paidCosts = (appState.costs || []).filter(c => (c.status || 'Pago') === 'Pago');
-        const paidSum = paidCosts.reduce((acc, c) => acc + (Number(c.actual) || 0), 0);
-        const totalSales = appState.sales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
-        responseBlocks.push(`
-          <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-1">
-            <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Resumo Financeiro & Despesas</div>
-            <p class="text-slate-200">Faturamento em Vendas: <strong>${formatBRL(totalSales)}</strong> | Despesas Pagas: <strong>${formatBRL(paidSum)}</strong> (${paidCosts.length} lançamento(s)).</p>
-          </div>
-        `);
-      }
-
-      // 3. Estoque Baixo
-      if (qLower.includes('estoque baixo') || qLower.includes('acabando') || qLower.includes('repor')) {
-        const low = appState.products.filter(p => (p.stock || 0) <= 10);
-        responseBlocks.push(`
-          <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
-            <div class="text-[10px] font-bold uppercase tracking-wider text-amber-300">Alerta de Reposição de Estoque</div>
-            <p class="text-slate-200">${low.length === 0 ? 'Todos os produtos estão com bom saldo em estoque.' : low.map(p => `• <strong>${escapeHtmlStr(p.name)}</strong> (${p.stock} un.)`).join('<br>')}</p>
-          </div>
-        `);
-      }
-
-      // 4. Base Técnica Balcão (Elétrica, Hidráulica, Construção)
-      if (qLower.includes('chuveiro') || qLower.includes('bitola') || qLower.includes('fio')) {
-        responseBlocks.push(`
-          <div class="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 space-y-1">
-            <div class="text-[10px] font-bold uppercase tracking-wider text-sky-300">Guia Técnico Elétrico (NBR 5410)</div>
-            <p class="text-slate-200">• <strong>Chuveiro 5500W em 220V:</strong> Corrente de 25A → Use <strong>Cabo 4,0mm²</strong> e <strong>Disjuntor 32A</strong>.<br>• <strong>Chuveiro 5500W em 127V:</strong> Corrente de 43,3A → Use <strong>Cabo 10,0mm²</strong> e <strong>Disjuntor 50A</strong>.<br>• <strong>Chuveiro 7500W em 220V:</strong> Corrente de 34A → Use <strong>Cabo 6,0mm²</strong> e <strong>Disjuntor 40A</strong>.</p>
-          </div>
-        `);
-      } else if (qLower.includes('curva b') || qLower.includes('curva c')) {
-        responseBlocks.push(`
-          <div class="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 space-y-1">
-            <div class="text-[10px] font-bold uppercase tracking-wider text-sky-300">Disjuntores Curva B vs Curva C</div>
-            <p class="text-slate-200">• <strong>Curva B (3 a 5x In):</strong> Indicado para cargas resistivas sem pico de partida (chuveiros, torneiras elétricas, tomadas residenciais e iluminação).<br>• <strong>Curva C (5 a 10x In):</strong> Indicado para cargas indutivas com pico de partida (motores, bombas d'água, ar-condicionado, micro-ondas).</p>
-          </div>
-        `);
-      }
-
-      // 5. Busca no Estoque da Loja
-      const terms = qLower.split(/\s+/).filter(w => w.length > 2);
-      const matchedProducts = appState.products.filter(p =>
-        terms.some(t => p.name.toLowerCase().includes(t) || String(p.group || '').toLowerCase().includes(t))
-      );
-      if (matchedProducts.length > 0 && !qLower.includes('estoque baixo')) {
-        responseBlocks.push(`
-          <div class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-700 space-y-1">
-            <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Disponível no Estoque da Loja</div>
-            ${matchedProducts.slice(0, 4).map(p => `<div class="text-slate-200">• <strong>${escapeHtmlStr(p.name)}</strong> — <span class="text-emerald-400 font-bold">${formatBRL(p.price)}</span> (${p.stock} un.)</div>`).join('')}
-          </div>
-        `);
-      }
-
-      // 6. Pesquisa Online na Web
-      let webSearchTerm = question;
-      if (assistenteOnlineEnabled) {
-        const webData = await searchWebTechnicalKnowledge(question);
-        webSearchTerm = webData.cleanTerm;
-        webData.results.forEach(r => {
-          responseBlocks.push(`
-            <div class="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 space-y-1">
-              <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-300">${escapeHtmlStr(r.source)} • ${escapeHtmlStr(r.title)}</div>
-              <p class="text-slate-200">${escapeHtmlStr(r.text)}</p>
-            </div>
-          `);
-        });
-      }
-
-      document.getElementById(typingId)?.remove();
-
-      const linksBar = `
-        <div class="pt-1.5 flex flex-wrap gap-2">
-          <a href="https://www.google.com/search?q=${encodeURIComponent(webSearchTerm)}" target="_blank" rel="noopener"
-            class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[10px] font-bold text-sky-300">
-            Ver no Google &nearr;
-          </a>
-          <a href="https://lista.mercadolivre.com.br/${encodeURIComponent(webSearchTerm)}" target="_blank" rel="noopener"
-            class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[10px] font-bold text-amber-300">
-            Pesquisar Preço Mercado Livre &nearr;
-          </a>
-        </div>
-      `;
-
-      const fallbackMsg = responseBlocks.length === 0
-        ? `<p class="text-slate-200">Pesquisei sobre <strong>"${escapeHtmlStr(question)}"</strong>. Você pode abrir os resultados completos da internet nos botões abaixo ou perguntar por um item cadastrado no estoque:</p>`
-        : '';
-
-      chatBox.innerHTML += `
-        <div class="p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700/80 text-slate-200 max-w-2xl space-y-2">
-          ${fallbackMsg}
-          ${responseBlocks.join('')}
-          ${linksBar}
-        </div>
-      `;
-      chatBox.scrollTop = chatBox.scrollHeight;
-      if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Enviar'; }
-    }
-
-    // ==================== ORÇAMENTOS COMERCIAIS (INTERLIGADO AO PDV/CAIXA) ====================
-    function renderQuotesView() {
-      const datalist = document.getElementById('quote-customers-datalist');
-      if (datalist) {
-        const clients = appState.entities.filter(e => e.type === 'Cliente');
-        datalist.innerHTML = clients.map(c => `<option value="${escapeHtmlStr(c.name)}"></option>`).join('');
-      }
-
-      const prodSelect = document.getElementById('quote-product-select');
-      if (prodSelect) {
-        prodSelect.innerHTML = '<option value="">-- Selecione um produto do estoque --</option>' +
-          appState.products.map(p => `<option value="${p.id}">${escapeHtmlStr(p.name)} (${formatBRL(p.price)} • ${p.stock} un.)</option>`).join('');
-      }
-
-      const validInput = document.getElementById('quote-valid-input');
-      if (validInput && !validInput.value) {
-        validInput.value = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-      }
-
-      renderQuoteDraftItems();
-      renderQuotesTable();
-    }
-
-    function onSelectQuoteProduct(productId) {
-      const prod = appState.products.find(p => p.id === productId);
-      const priceInput = document.getElementById('quote-item-price');
-      if (prod && priceInput) {
-        priceInput.value = Number(prod.price || 0).toFixed(2);
-      }
-    }
-
-    function addQuoteDraftItem() {
-      const selectEl = document.getElementById('quote-product-select');
-      const qtyEl = document.getElementById('quote-item-qty');
-      const priceEl = document.getElementById('quote-item-price');
-      const prodId = selectEl?.value;
-      const qty = Math.max(1, parseInt(qtyEl?.value, 10) || 1);
-      const price = parseFloat(priceEl?.value) || 0;
-
-      if (!prodId || price <= 0) {
-        return showToast('Selecione um produto e informe o valor unitário.', true);
-      }
-
-      const prod = appState.products.find(p => p.id === prodId);
-      if (!prod) return;
-
-      const existing = quoteDraftItems.find(i => i.id === prodId && Number(i.price) === price);
-      if (existing) {
-        existing.qty += qty;
-      } else {
-        quoteDraftItems.push({ id: prod.id, name: prod.name, qty, price });
-      }
-
-      if (qtyEl) qtyEl.value = '1';
-      renderQuoteDraftItems();
-    }
-
-    function removeQuoteDraftItem(index) {
-      quoteDraftItems.splice(index, 1);
-      renderQuoteDraftItems();
-    }
-
-    function calculateQuoteDraftTotals() {
-      const subtotal = quoteDraftItems.reduce((acc, i) => acc + i.price * i.qty, 0);
-      const discType = document.getElementById('quote-discount-type')?.value || 'percent';
-      const rawDisc = Math.max(0, parseFloat(document.getElementById('quote-discount-value')?.value) || 0);
-      let discount = 0;
-      if (subtotal > 0 && rawDisc > 0) {
-        discount = discType === 'percent'
-          ? subtotal * (Math.min(100, rawDisc) / 100)
-          : Math.min(subtotal, rawDisc);
-      }
-      const total = Math.max(0, subtotal - discount);
-      return { subtotal, discount, total, discType, rawDisc };
-    }
-
-    function renderQuoteDraftItems() {
-      const tbody = document.getElementById('quote-draft-items-body');
-      const totalEl = document.getElementById('quote-draft-total');
-      if (tbody) {
-        if (quoteDraftItems.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-500">Nenhum item adicionado ao orçamento ainda.</td></tr>';
-        } else {
-          tbody.innerHTML = quoteDraftItems.map((item, idx) => `
-            <tr>
-              <td class="py-2 px-2 font-semibold text-white">${escapeHtmlStr(item.name)}</td>
-              <td class="py-2 px-2 text-center tabular-nums">${item.qty}</td>
-              <td class="py-2 px-2 text-right tabular-nums">${formatBRL(item.price)}</td>
-              <td class="py-2 px-2 text-right font-bold text-emerald-400 tabular-nums">${formatBRL(item.price * item.qty)}</td>
-              <td class="py-2 px-2 text-right"><button type="button" onclick="removeQuoteDraftItem(${idx})" class="text-red-400 hover:underline font-bold">Remover</button></td>
-            </tr>
-          `).join('');
-        }
-      }
-      const { total } = calculateQuoteDraftTotals();
-      if (totalEl) totalEl.textContent = formatBRL(total);
-    }
-
-    function resetQuoteBuilderForm() {
-      document.getElementById('quote-form-title').textContent = 'Montar Novo Orçamento';
-      document.getElementById('quote-edit-id').value = '';
-      document.getElementById('quote-customer-input').value = '';
-      document.getElementById('quote-phone-input').value = '';
-      document.getElementById('quote-valid-input').value = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-      document.getElementById('quote-payment-input').value = 'Pix';
-      document.getElementById('quote-discount-type').value = 'percent';
-      document.getElementById('quote-discount-value').value = '0';
-      document.getElementById('quote-notes-input').value = '';
-      quoteDraftItems = [];
-      renderQuoteDraftItems();
-    }
-
-    function editQuoteRecord(id) {
-      const q = (appState.quotes || []).find(item => item.id === id);
-      if (!q) return;
-      document.getElementById('quote-form-title').textContent = `Editando Orçamento ${q.code}`;
-      document.getElementById('quote-edit-id').value = q.id;
-      document.getElementById('quote-customer-input').value = q.customer || '';
-      document.getElementById('quote-phone-input').value = q.customerPhone || '';
-      document.getElementById('quote-valid-input').value = q.validUntil || '';
-      document.getElementById('quote-payment-input').value = q.payment || 'Pix';
-      document.getElementById('quote-discount-type').value = q.discountType || 'percent';
-      document.getElementById('quote-discount-value').value = q.discountValue ?? 0;
-      document.getElementById('quote-notes-input').value = q.notes || '';
-      quoteDraftItems = structuredClone(q.items || []);
-      renderQuoteDraftItems();
-      document.getElementById('quote-builder-card')?.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function saveQuoteRecord() {
-      const customer = document.getElementById('quote-customer-input').value.trim();
-      if (!customer) return showToast('Informe o nome do cliente para o orçamento.', true);
-      if (quoteDraftItems.length === 0) return showToast('Inclua pelo menos 1 item no orçamento.', true);
-
-      const editId = document.getElementById('quote-edit-id').value;
-      const entityMatch = appState.entities.find(e => e.name.toLowerCase() === customer.toLowerCase());
-      const phone = document.getElementById('quote-phone-input').value.trim() || entityMatch?.phone || '';
-      const validUntil = document.getElementById('quote-valid-input').value || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-      const payment = document.getElementById('quote-payment-input').value || 'Pix';
-      const notes = document.getElementById('quote-notes-input').value.trim();
-      const { subtotal, discount, total, discType, rawDisc } = calculateQuoteDraftTotals();
-
-      if (editId) {
-        const idx = appState.quotes.findIndex(q => q.id === editId);
-        if (idx >= 0) {
-          appState.quotes[idx] = {
-            ...appState.quotes[idx],
-            customer,
-            customerPhone: phone,
-            validUntil,
-            payment,
-            notes,
-            discountType: discType,
-            discountValue: rawDisc,
-            subtotal,
-            discount,
-            total,
-            items: structuredClone(quoteDraftItems)
-          };
-          showToast(`Orçamento ${appState.quotes[idx].code} atualizado!`);
-        }
-      } else {
-        const code = `ORC-${Math.floor(1000 + Math.random() * 9000)}`;
-        appState.quotes.unshift({
-          id: `ORC-${Date.now().toString().slice(-5)}`,
-          code,
-          date: new Date().toISOString(),
-          validUntil,
-          customer,
-          customerPhone: phone,
-          payment,
-          status: 'Pendente',
-          notes,
-          discountType: discType,
-          discountValue: rawDisc,
-          subtotal,
-          discount,
-          total,
-          items: structuredClone(quoteDraftItems),
-          convertedSaleId: null
-        });
-        showToast(`Orçamento ${code} salvo com sucesso!`);
-      }
-
-      resetQuoteBuilderForm();
-      saveState();
-      renderAllViews();
-    }
-
-    function approveAndConvertQuoteToSale(id) {
-      const q = (appState.quotes || []).find(item => item.id === id);
-      if (!q || q.status === 'Aprovado') return;
-
-      (q.items || []).forEach(item => {
-        const prod = appState.products.find(p => p.id === item.id);
-        if (prod) prod.stock = Math.max(0, (prod.stock || 0) - item.qty);
-      });
-
-      const saleCode = `VND-${1000 + appState.sales.length + 1}`;
-      const nowIso = new Date().toISOString();
-
-      appState.sales.unshift({
-        id: saleCode,
-        date: nowIso,
-        customer: q.customer,
-        payment: q.payment || 'Pix',
-        subtotal: q.subtotal,
-        discount: q.discount || 0,
-        total: q.total,
-        items: structuredClone(q.items || [])
-      });
-
-      appState.transactions.unshift({
-        id: `TX-${Date.now().toString().slice(-5)}`,
-        date: nowIso,
-        type: 'entrada',
-        desc: `Venda ${saleCode} (Orçamento ${q.code}) - ${q.customer}`,
-        method: q.payment || 'Pix',
-        amount: q.total,
-        saleId: saleCode
-      });
-
-      q.status = 'Aprovado';
-      q.convertedSaleId = saleCode;
-
-      saveState();
-      renderAllViews();
-      showToast(`Orçamento ${q.code} aprovado e convertido na venda ${saleCode}!`);
-    }
-
-    function loadQuoteIntoPDV(id) {
-      const q = (appState.quotes || []).find(item => item.id === id);
-      if (!q) return;
-
-      cartItems = structuredClone(q.items || []);
-      navigateTo('vendas');
-
-      const custSelect = document.getElementById('pdv-customer-select');
-      if (custSelect) {
-        const hasOption = Array.from(custSelect.options).some(opt => opt.value === q.customer);
-        if (!hasOption && q.customer) {
-          const opt = document.createElement('option');
-          opt.value = q.customer;
-          opt.textContent = q.customer;
-          custSelect.appendChild(opt);
-        }
-        custSelect.value = q.customer || 'Consumidor Final';
-      }
-
-      const paySelect = document.getElementById('pdv-payment-select');
-      if (paySelect && q.payment) paySelect.value = q.payment;
-
-      const dType = document.getElementById('pdv-discount-type');
-      const dVal = document.getElementById('pdv-discount-value');
-      if (dType) dType.value = q.discountType || 'percent';
-      if (dVal) dVal.value = String(q.discountValue || 0);
-
-      renderPDVCart();
-      showToast(`Orçamento ${q.code} carregado no PDV!`);
-    }
-
-    function sendQuoteToWhatsApp(id) {
-      const q = (appState.quotes || []).find(item => item.id === id);
-      if (!q) return;
-      const storeName = appState.store?.name || 'Eletro Shop';
-      const lines = (q.items || []).map(i => `• ${i.qty}x ${i.name} — ${formatBRL(i.price * i.qty)}`).join('\n');
-      let msg = `Olá *${q.customer}*! Segue o orçamento *${q.code}* da *${storeName}*:\n\n${lines}\n\nSubtotal: ${formatBRL(q.subtotal)}`;
-      if (q.discount > 0) msg += `\nDesconto: -${formatBRL(q.discount)}`;
-      msg += `\n*Total: ${formatBRL(q.total)}*\nCondição: ${q.payment}\nValidade: ${q.validUntil ? new Date(q.validUntil + 'T12:00:00').toLocaleDateString('pt-BR') : '7 dias'}`;
-      if (q.notes) msg += `\nObs.: ${q.notes}`;
-
-      toggleWhatsAppWidget(true);
-      switchWhatsAppWidgetTab('quick');
-      document.getElementById('wa-phone-input').value = q.customerPhone || '';
-      document.getElementById('wa-message-input').value = msg;
-      showToast('Orçamento pronto para envio no WhatsApp!');
-    }
-
-    function printSavedQuotePDF(id) {
-      const q = (appState.quotes || []).find(item => item.id === id);
-      if (!q) return;
-      const storeName = appState.store?.name || 'Eletro Shop';
-      const cnpj = appState.store?.cnpj || '';
-      const validStr = q.validUntil ? new Date(q.validUntil + 'T12:00:00').toLocaleDateString('pt-BR') : '7 dias';
-
-      const win = window.open('', '_blank');
-      if (!win) return showToast('Permita pop-ups para visualizar o PDF.', true);
-
-      const rowsHtml = (q.items || []).map((item, idx) => `
-        <tr>
-          <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${idx + 1}</td>
-          <td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:600;">${escapeHtmlStr(item.name)}</td>
-          <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center;">${item.qty}</td>
-          <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right;">${formatBRL(item.price)}</td>
-          <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;">${formatBRL(item.price * item.qty)}</td>
-        </tr>
-      `).join('');
-
-      win.document.write(`
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head><meta charset="UTF-8"><title>Orçamento ${escapeHtmlStr(q.code)} - ${escapeHtmlStr(storeName)}</title></head>
-        <body style="font-family:'Segoe UI',Arial,sans-serif;color:#0f172a;padding:32px;max-width:800px;margin:0 auto;">
-          <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0f172a;padding-bottom:16px;margin-bottom:20px;">
-            <div>
-              <h1 style="margin:0;font-size:22px;">${escapeHtmlStr(storeName)}</h1>
-              <p style="margin:4px 0 0;font-size:12px;color:#475569;">${cnpj ? `CNPJ: ${escapeHtmlStr(cnpj)} • ` : ''}Proposta Comercial (${escapeHtmlStr(q.code)})</p>
-            </div>
-            <div style="text-align:right;font-size:12px;">
-              <strong>Emissão:</strong> ${new Date(q.date).toLocaleDateString('pt-BR')}<br>
-              <strong>Validade:</strong> ${validStr}
-            </div>
-          </div>
-          <p style="font-size:13px;margin-bottom:16px;"><strong>Cliente:</strong> ${escapeHtmlStr(q.customer)} &nbsp;|&nbsp; <strong>Condição:</strong> ${escapeHtmlStr(q.payment)}</p>
-          <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px;">
-            <thead>
-              <tr style="background:#f1f5f9;text-align:left;">
-                <th style="padding:8px;">#</th>
-                <th style="padding:8px;">Descrição do Produto</th>
-                <th style="padding:8px;text-align:center;">Qtd.</th>
-                <th style="padding:8px;text-align:right;">Unitário</th>
-                <th style="padding:8px;text-align:right;">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>${rowsHtml}</tbody>
-          </table>
-          ${q.notes ? `<p style="font-size:12px;color:#334155;background:#f8fafc;padding:10px;border-radius:6px;"><strong>Observações:</strong> ${escapeHtmlStr(q.notes)}</p>` : ''}
-          <div style="text-align:right;font-size:13px;line-height:1.8;margin-top:16px;">
-            <div>Subtotal: <strong>${formatBRL(q.subtotal)}</strong></div>
-            ${q.discount > 0 ? `<div style="color:#059669;">Desconto Comercial: <strong>- ${formatBRL(q.discount)}</strong></div>` : ''}
-            <div style="font-size:18px;margin-top:6px;">Total da Proposta: <strong>${formatBRL(q.total)}</strong></div>
-          </div>
-          <div style="margin-top:28px;text-align:center;">
-            <button onclick="window.print()" style="padding:10px 20px;background:#0f172a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">Imprimir / Salvar PDF</button>
-          </div>
-        </body>
-        </html>
-      `);
-      win.document.close();
-    }
-
-    function deleteQuoteRecord(id) {
-      appState.quotes = (appState.quotes || []).filter(q => q.id !== id);
-      saveState();
-      renderAllViews();
-      showToast('Orçamento excluído.');
-    }
-
-    function renderQuotesTable() {
-      const quotes = appState.quotes || [];
-      const pending = quotes.filter(q => q.status === 'Pendente');
-      const approved = quotes.filter(q => q.status === 'Aprovado');
-
-      const pendingSum = pending.reduce((acc, q) => acc + (Number(q.total) || 0), 0);
-      const approvedSum = approved.reduce((acc, q) => acc + (Number(q.total) || 0), 0);
-      const convRate = quotes.length > 0 ? Math.round((approved.length / quotes.length) * 100) : 0;
-
-      const pCountEl = document.getElementById('quotes-kpi-pending-count');
-      if (pCountEl) pCountEl.textContent = String(pending.length);
-      const pTotEl = document.getElementById('quotes-kpi-pending-total');
-      if (pTotEl) pTotEl.textContent = `Total em negociação: ${formatBRL(pendingSum)}`;
-
-      const aCountEl = document.getElementById('quotes-kpi-approved-count');
-      if (aCountEl) aCountEl.textContent = String(approved.length);
-      const aTotEl = document.getElementById('quotes-kpi-approved-total');
-      if (aTotEl) aTotEl.textContent = `Faturado via orçamento: ${formatBRL(approvedSum)}`;
-
-      const convEl = document.getElementById('quotes-kpi-conversion');
-      if (convEl) convEl.textContent = `${convRate}%`;
-
-      const badge = document.getElementById('sidebar-quotes-badge');
-      if (badge) badge.textContent = String(pending.length);
-
-      const tbody = document.getElementById('quotes-table-body');
-      if (!tbody) return;
-
-      const statusFilter = document.getElementById('quotes-status-filter')?.value || 'all';
-      const filtered = statusFilter === 'all' ? quotes : quotes.filter(q => q.status === statusFilter);
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-500">Nenhum orçamento encontrado para este filtro.</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = filtered.map(q => {
-        const isApproved = q.status === 'Aprovado';
-        const itemsText = (q.items || []).map(i => `${i.qty}x ${i.name}`).join(', ');
-        const dt = new Date(q.date).toLocaleDateString('pt-BR');
-        return `
-          <tr class="hover:bg-slate-800/40">
-            <td class="py-3 px-3">
-              <div class="font-bold text-white">${escapeHtmlStr(q.code)}</div>
-              <div class="text-[10px] text-slate-400">Emissão: ${dt}</div>
-            </td>
-            <td class="py-3 px-3">
-              <div class="font-bold text-slate-200">${escapeHtmlStr(q.customer)}</div>
-              <div class="text-[10px] text-slate-400">${escapeHtmlStr(q.payment)} ${q.customerPhone ? `• ${escapeHtmlStr(q.customerPhone)}` : ''}</div>
-            </td>
-            <td class="py-3 px-3 text-slate-400 max-w-xs truncate" title="${escapeHtmlStr(itemsText)}">${escapeHtmlStr(itemsText)}</td>
-            <td class="py-3 px-3 text-center">
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isApproved ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'}">
-                ${escapeHtmlStr(q.status)}
-              </span>
-            </td>
-            <td class="py-3 px-3 text-right font-bold text-emerald-400 tabular-nums">${formatBRL(q.total)}</td>
-            <td class="py-3 px-3 text-right space-x-2 whitespace-nowrap">
-              ${!isApproved ? `<button onclick="approveAndConvertQuoteToSale('${q.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold">Aprovar & Faturar</button>` : ''}
-              <button onclick="loadQuoteIntoPDV('${q.id}')" class="text-sky-400 hover:underline font-semibold">PDV</button>
-              <button onclick="printSavedQuotePDF('${q.id}')" class="text-slate-300 hover:underline font-semibold">PDF</button>
-              <button onclick="sendQuoteToWhatsApp('${q.id}')" class="text-emerald-400 hover:underline font-semibold">WhatsApp</button>
-              <button onclick="editQuoteRecord('${q.id}')" class="text-amber-300 hover:underline font-semibold">Editar</button>
-              <button onclick="deleteQuoteRecord('${q.id}')" class="text-red-400 hover:underline font-semibold">Excluir</button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    // ==================== CUSTOS & DESPESAS DA LOJA ====================
-    function syncCostWithCashTransaction(costItem) {
-      if (!costItem) return;
-      const isPaid = (costItem.status || 'Pago') === 'Pago';
-      const amount = Number(costItem.actual) || 0;
-      const existingIdx = appState.transactions.findIndex(t => t.costId === costItem.id || (costItem.txId && t.id === costItem.txId));
-
-      if (isPaid && amount > 0) {
-        const txDesc = `Despesa [${costItem.category || 'Operacional'}]: ${costItem.desc}`;
-        if (existingIdx >= 0) {
-          appState.transactions[existingIdx] = {
-            ...appState.transactions[existingIdx],
-            date: costItem.date || appState.transactions[existingIdx].date,
-            type: 'saida',
-            desc: txDesc,
-            method: costItem.method || 'Pix',
-            amount,
-            costId: costItem.id
-          };
-          costItem.txId = appState.transactions[existingIdx].id;
-        } else {
-          const newTxId = costItem.txId || `TX-COST-${costItem.id}`;
-          costItem.txId = newTxId;
-          appState.transactions.unshift({
-            id: newTxId,
-            date: costItem.date || new Date().toISOString(),
-            type: 'saida',
-            desc: txDesc,
-            method: costItem.method || 'Pix',
-            amount,
-            costId: costItem.id
-          });
-        }
-      } else if (existingIdx >= 0) {
-        appState.transactions.splice(existingIdx, 1);
-        costItem.txId = null;
-      }
-    }
-
-    function ensureAllPaidCostsSyncedToCash() {
-      (appState.costs || []).forEach(c => {
-        if (!c.date) c.date = new Date().toISOString();
-        if (!c.category) c.category = 'Despesa Fixa';
-        if (!c.method) c.method = 'Pix';
-        if (!c.status) c.status = 'Pago';
-        syncCostWithCashTransaction(c);
-      });
-    }
-
-    function saveStoreCost(event) {
-      event.preventDefault();
-      const editId = document.getElementById('cost-edit-id').value;
-      const desc = document.getElementById('cost-desc').value.trim();
-      const category = document.getElementById('cost-category').value;
-      const method = document.getElementById('cost-method').value;
-      const status = document.getElementById('cost-status').value;
-      const budget = parseFloat(document.getElementById('cost-budget').value) || 0;
-      const actual = parseFloat(document.getElementById('cost-actual').value) || 0;
-      if (!desc || actual <= 0) return;
-
-      if (editId) {
-        const idx = appState.costs.findIndex(c => c.id === editId);
-        if (idx >= 0) {
-          appState.costs[idx] = { ...appState.costs[idx], desc, category, method, status, budget, actual };
-          syncCostWithCashTransaction(appState.costs[idx]);
-          showToast('Despesa atualizada e sincronizada!');
-        }
-      } else {
-        const newCost = {
-          id: `CST-${Date.now().toString().slice(-5)}`,
-          date: new Date().toISOString(),
-          desc,
-          category,
-          method,
-          status,
-          budget,
-          actual,
-          txId: null
-        };
-        appState.costs.unshift(newCost);
-        syncCostWithCashTransaction(newCost);
-        showToast(status === 'Pago' ? 'Despesa lançada e abatida do Livro Caixa!' : 'Despesa agendada em Contas a Pagar!');
-      }
-
-      resetCostForm();
-      saveState();
-      renderAllViews();
-    }
-
-    function editStoreCost(id) {
-      const c = (appState.costs || []).find(item => item.id === id);
-      if (!c) return;
-      document.getElementById('cost-form-title').textContent = 'Editar Despesa / Custo da Loja';
-      document.getElementById('cost-cancel-edit-btn').classList.remove('hidden');
-      document.getElementById('cost-edit-id').value = c.id;
-      document.getElementById('cost-desc').value = c.desc || '';
-      document.getElementById('cost-category').value = c.category || 'Despesa Fixa';
-      document.getElementById('cost-method').value = c.method || 'Pix';
-      document.getElementById('cost-status').value = c.status || 'Pago';
-      document.getElementById('cost-budget').value = c.budget ?? 0;
-      document.getElementById('cost-actual').value = c.actual ?? 0;
-      document.getElementById('cost-submit-btn').textContent = 'Atualizar';
-    }
-
-    function resetCostForm() {
-      document.getElementById('cost-form-title').textContent = 'Lançar Despesa / Custo da Loja';
-      document.getElementById('cost-cancel-edit-btn').classList.add('hidden');
-      document.getElementById('cost-edit-id').value = '';
-      document.getElementById('cost-desc').value = '';
-      document.getElementById('cost-category').value = 'Despesa Fixa';
-      document.getElementById('cost-method').value = 'Pix';
-      document.getElementById('cost-status').value = 'Pago';
-      document.getElementById('cost-budget').value = '';
-      document.getElementById('cost-actual').value = '';
-      document.getElementById('cost-submit-btn').textContent = 'Salvar';
-    }
-
-    function toggleCostPaidStatus(id) {
-      const c = (appState.costs || []).find(item => item.id === id);
-      if (!c) return;
-      c.status = (c.status || 'Pago') === 'Pago' ? 'Pendente' : 'Pago';
-      if (c.status === 'Pago') c.date = new Date().toISOString();
-      syncCostWithCashTransaction(c);
-      saveState();
-      renderAllViews();
-      showToast(c.status === 'Pago' ? 'Despesa quitada e lançada no Livro Caixa!' : 'Despesa marcada como Pendente e estornada do Caixa.');
-    }
-
-    function deleteCost(id) {
-      appState.costs = (appState.costs || []).filter(c => c.id !== id);
-      appState.transactions = appState.transactions.filter(t => t.costId !== id);
-      saveState();
-      renderAllViews();
-      showToast('Despesa removida e sincronizada com o Caixa.');
-    }
-
-    function renderCostsTable() {
-      const costs = appState.costs || [];
-      const paidTotal = costs.filter(c => (c.status || 'Pago') === 'Pago').reduce((acc, c) => acc + (Number(c.actual) || 0), 0);
-      const pendingTotal = costs.filter(c => c.status === 'Pendente').reduce((acc, c) => acc + (Number(c.actual) || 0), 0);
-      const budgetTotal = costs.reduce((acc, c) => acc + (Number(c.budget) || 0), 0);
-      const actualTotal = costs.reduce((acc, c) => acc + (Number(c.actual) || 0), 0);
-      const variance = budgetTotal - actualTotal;
-
-      const paidEl = document.getElementById('costs-kpi-paid');
-      if (paidEl) paidEl.textContent = formatBRL(paidTotal);
-      const pendEl = document.getElementById('costs-kpi-pending');
-      if (pendEl) pendEl.textContent = formatBRL(pendingTotal);
-      const varEl = document.getElementById('costs-kpi-variance');
-      if (varEl) {
-        varEl.textContent = `${variance >= 0 ? '+' : ''}${formatBRL(variance)}`;
-        varEl.className = `text-2xl font-extrabold mt-1 tabular-nums ${variance >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-      }
-      const bSubEl = document.getElementById('costs-kpi-budget-sub');
-      if (bSubEl) bSubEl.textContent = `Previsão orçamentária: ${formatBRL(budgetTotal)}`;
-
-      const tbody = document.getElementById('costs-table-body');
-      if (!tbody) return;
-
-      const filter = document.getElementById('costs-filter-select')?.value || 'all';
-      const filtered = filter === 'all' ? costs : costs.filter(c => (c.status || 'Pago') === filter);
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-slate-500">Nenhuma despesa encontrada.</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = filtered.map(c => {
-        const isPaid = (c.status || 'Pago') === 'Pago';
-        const dt = c.date ? new Date(c.date).toLocaleDateString('pt-BR') : '-';
-        return `
-          <tr class="hover:bg-slate-800/40">
-            <td class="py-3 px-3 text-slate-400">${dt}</td>
-            <td class="py-3 px-3 font-bold text-white">${escapeHtmlStr(c.desc)}</td>
-            <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(c.category || 'Despesa Fixa')}</td>
-            <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(c.method || 'Pix')}</td>
-            <td class="py-3 px-3 text-center">
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isPaid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-300'}">
-                ${isPaid ? 'Pago' : 'Pendente'}
-              </span>
-            </td>
-            <td class="py-3 px-3 text-right text-slate-400 tabular-nums">${formatBRL(c.budget)}</td>
-            <td class="py-3 px-3 text-right font-bold tabular-nums ${isPaid ? 'text-red-400' : 'text-amber-300'}">${formatBRL(c.actual)}</td>
-            <td class="py-3 px-3 text-right space-x-2 whitespace-nowrap">
-              <button onclick="toggleCostPaidStatus('${c.id}')" class="text-emerald-400 hover:underline font-semibold">${isPaid ? 'Estornar' : 'Dar Baixa'}</button>
-              <button onclick="editStoreCost('${c.id}')" class="text-sky-400 hover:underline font-semibold">Editar</button>
-              <button onclick="deleteCost('${c.id}')" class="text-red-400 hover:underline font-semibold">Excluir</button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    // ==================== CLIENTES, FORNECEDORES & EQUIPE ====================
+    // ==================== CLIENTES & FORNECEDORES ====================
     function addEntity(e) {
       e.preventDefault();
       appState.entities.unshift({
         id: `ENT-${Date.now().toString().slice(-5)}`,
         type: document.getElementById('entity-type').value,
         name: document.getElementById('entity-name').value.trim(),
-        doc: document.getElementById('entity-doc').value.trim(),
-        phone: document.getElementById('entity-phone').value.trim()
+        doc: document.getElementById('entity-doc').value.trim() || '-',
+        phone: document.getElementById('entity-phone').value.trim() || '-'
       });
       e.target.reset();
       saveState();
       renderAllViews();
-      showToast('Cadastro realizado!');
+      showToast('Cadastro adicionado!');
     }
 
     function deleteEntity(id) {
@@ -3817,33 +3516,233 @@
       if (!tbody) return;
       tbody.innerHTML = appState.entities.map(ent => `
         <tr class="hover:bg-slate-800/40">
-          <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${ent.type === 'Cliente' ? 'badge-accent' : 'bg-amber-500/20 text-amber-300'}">${escapeHtmlStr(ent.type)}</span></td>
+          <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${ent.type === 'Cliente' ? 'bg-sky-500/15 text-sky-400' : 'bg-amber-500/15 text-amber-400'}">${escapeHtmlStr(ent.type)}</span></td>
           <td class="py-3 px-3 font-semibold text-white">${escapeHtmlStr(ent.name)}</td>
-          <td class="py-3 px-3 text-slate-400 font-mono">${escapeHtmlStr(ent.doc || '-')}</td>
-          <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(ent.phone || '-')}</td>
+          <td class="py-3 px-3 text-slate-400 font-mono">${escapeHtmlStr(ent.doc)}</td>
+          <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(ent.phone)}</td>
           <td class="py-3 px-3 text-right"><button onclick="deleteEntity('${ent.id}')" class="text-red-400 hover:underline">Excluir</button></td>
         </tr>
       `).join('');
     }
 
+    // ==================== EQUIPE SUPABASE ====================
     async function syncTeamFromSupabase() {
       if (!supabaseClient) return;
+      const tbody = document.getElementById('team-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400">Buscando usuários no Supabase...</td></tr>`;
       try {
         const { data, error } = await supabaseClient.from('erp_team_users').select('*');
         if (error) throw error;
         appState.team = data || [];
-        const tbody = document.getElementById('team-table-body');
-        if (tbody) {
-          tbody.innerHTML = appState.team.map(u => `
-            <tr class="hover:bg-slate-800/40">
-              <td class="py-3 px-3 font-bold text-white">${escapeHtmlStr(u.username)}</td>
-              <td class="py-3 px-3 text-slate-300">${escapeHtmlStr(u.email || '-')}</td>
-              <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold badge-accent">${escapeHtmlStr(u.role)}</span></td>
-              <td class="py-3 px-3 text-emerald-400 font-semibold">${escapeHtmlStr(u.status || 'Ativo')}</td>
-            </tr>
-          `).join('');
+        tbody.innerHTML = appState.team.map(u => `
+          <tr class="hover:bg-slate-800/40">
+            <td class="py-3 px-3 font-bold text-white">${escapeHtmlStr(u.username)}</td>
+            <td class="py-3 px-3 text-slate-400">${escapeHtmlStr(u.email || '-')}</td>
+            <td class="py-3 px-3"><span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold badge-accent">${escapeHtmlStr(u.role)}</span></td>
+            <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full text-[11px] bg-emerald-500/15 text-emerald-400 font-semibold">${escapeHtmlStr(u.status || 'Ativo')}</span></td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-red-400">Erro: ${escapeHtmlStr(err.message)}</td></tr>`;
+      }
+    }
+
+    // ==================== ASSISTENTE IA OPERACIONAL (ESTOQUE + PESQUISA ONLINE) ====================
+    function toggleAssistenteOnlineMode() {
+      assistenteOnlineEnabled = !assistenteOnlineEnabled;
+      const btn = document.getElementById('ai-online-toggle-btn');
+      const dot = document.getElementById('ai-online-dot');
+      const lbl = document.getElementById('ai-online-label');
+      if (btn && dot && lbl) {
+        if (assistenteOnlineEnabled) {
+          btn.className = 'px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-xs font-bold text-emerald-300 flex items-center gap-1.5 transition';
+          dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+          lbl.textContent = 'Pesquisa Online: Ativa';
+        } else {
+          btn.className = 'px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300 flex items-center gap-1.5 transition';
+          dot.className = 'w-2 h-2 rounded-full bg-slate-500';
+          lbl.textContent = 'Pesquisa Online: Apenas Loja';
         }
-      } catch (e) { console.warn(e); }
+      }
+    }
+
+    function clearAssistenteChat() {
+      const box = document.getElementById('assistente-chat-messages');
+      if (box) {
+        box.innerHTML = `
+          <div class="p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700/80 text-slate-200 max-w-2xl">
+            <div class="font-bold text-sky-400 mb-1">Assistente IA Operacional • Online</div>
+            Histórico limpo! Faça uma pergunta sobre o estoque, orçamentos, despesas ou qualquer consulta técnica na internet.
+          </div>
+        `;
+      }
+    }
+
+    function askAssistenteQuick(question) {
+      const input = document.getElementById('assistente-input');
+      if (input) {
+        input.value = question;
+        handleAssistenteSubmit(new Event('submit'));
+      }
+    }
+
+    function appendAssistenteBubble(htmlContent, isUser = false) {
+      const box = document.getElementById('assistente-chat-messages');
+      if (!box) return null;
+      const div = document.createElement('div');
+      div.className = isUser
+        ? 'ml-auto p-3.5 rounded-2xl bg-sky-600/25 border border-sky-500/40 text-white max-w-xl'
+        : 'p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700/80 text-slate-200 max-w-2xl space-y-2';
+      div.innerHTML = htmlContent;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+      return div;
+    }
+
+    async function searchWebForAssistant(query) {
+      const cleanTerm = query
+        .replace(/^(o que é|o que e|para que serve|como funciona|pesquise|pesquisar|buscar|procure|qual o preço de|quanto custa)\s+/i, '')
+        .replace(/\?+$/, '')
+        .trim();
+
+      const searchTerm = cleanTerm || query;
+      const results = [];
+
+      try {
+        const wikiSearchUrl = `https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&format=json&origin=*&srlimit=1`;
+        const sRes = await fetch(wikiSearchUrl);
+        if (sRes.ok) {
+          const sJson = await sRes.json();
+          const firstHit = sJson?.query?.search?.[0];
+          if (firstHit?.title) {
+            const sumUrl = `https://pt.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(firstHit.title)}`;
+            const sumRes = await fetch(sumUrl);
+            if (sumRes.ok) {
+              const sumJson = await sumRes.json();
+              if (sumJson?.extract) {
+                results.push({
+                  source: 'Enciclopédia Técnica (Wikipedia PT)',
+                  title: sumJson.title,
+                  text: sumJson.extract,
+                  url: sumJson.content_urls?.desktop?.page || `https://pt.wikipedia.org/wiki/${encodeURIComponent(firstHit.title)}`
+                });
+              }
+            }
+          }
+        }
+      } catch {}
+
+      if (results.length === 0) {
+        try {
+          const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(searchTerm)}&format=json&no_html=1&skip_disambig=1`;
+          const dRes = await fetch(ddgUrl);
+          if (dRes.ok) {
+            const dJson = await dRes.json();
+            if (dJson?.AbstractText) {
+              results.push({
+                source: dJson.AbstractSource || 'Pesquisa Web',
+                title: dJson.Heading || searchTerm,
+                text: dJson.AbstractText,
+                url: dJson.AbstractURL || `https://www.google.com/search?q=${encodeURIComponent(searchTerm)}`
+              });
+            }
+          }
+        } catch {}
+      }
+
+      return { searchTerm, results };
+    }
+
+    async function handleAssistenteSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('assistente-input');
+      const btn = document.getElementById('assistente-send-btn');
+      const q = (input?.value || '').trim();
+      if (!q) return;
+
+      input.value = '';
+      appendAssistenteBubble(`<div class="font-bold text-sky-300 text-[11px] mb-1">Você</div>${escapeHtmlStr(q)}`, true);
+
+      const lower = q.toLowerCase();
+      let localBlocks = [];
+
+      // 1. Consulta local de estoque baixo
+      if (lower.includes('estoque baixo') || lower.includes('acabando') || lower.includes('repor')) {
+        const low = appState.products.filter(p => Number(p.stock) <= 10);
+        if (low.length === 0) {
+          localBlocks.push(`<div><strong>Estoque da Loja:</strong> Todos os itens estão com saldo acima de 10 unidades.</div>`);
+        } else {
+          localBlocks.push(`<div><strong>Itens com Estoque Baixo (${low.length}):</strong><ul class="list-disc pl-4 mt-1 space-y-0.5">${low.map(p => `<li>${escapeHtmlStr(p.name)} — <strong>${p.stock} un.</strong> (${formatBRL(p.price)})</li>`).join('')}</ul></div>`);
+        }
+      }
+
+      // 2. Consulta financeira, despesas e orçamentos
+      if (lower.includes('resumo') || lower.includes('financeiro') || lower.includes('caixa') || lower.includes('faturamento') || lower.includes('despesa')) {
+        const rev = appState.sales.reduce((a, b) => a + Number(b.total || 0), 0);
+        const totalIn = appState.transactions.filter(t => t.type === 'entrada').reduce((a, b) => a + Number(b.amount || 0), 0);
+        const totalOut = appState.transactions.filter(t => t.type === 'saida').reduce((a, b) => a + Number(b.amount || 0), 0);
+        const bal = Number(appState.initialCash || 0) + totalIn - totalOut;
+        const paidExp = (appState.costs || []).filter(c => (c.status || 'Pago') === 'Pago').reduce((a, b) => a + Number(b.actual || 0), 0);
+        const openQuotes = (appState.quotes || []).filter(qt => qt.status !== 'Aprovado').length;
+        localBlocks.push(`<div><strong>Resumo Consolidado da Loja:</strong><br>• Receita em Vendas: <strong>${formatBRL(rev)}</strong> (${appState.sales.length} vendas)<br>• Despesas Pagas da Loja: <strong>${formatBRL(paidExp)}</strong><br>• Saldo Atual em Caixa: <strong>${formatBRL(bal)}</strong><br>• Orçamentos em Aberto: <strong>${openQuotes}</strong></div>`);
+      }
+
+      // 3. Regras técnicas de balcão elétrico
+      if (lower.includes('chuveiro') || lower.includes('5500w') || lower.includes('7500w')) {
+        localBlocks.push(`<div><strong>Dimensionamento Técnico (NBR 5410):</strong><br>• <strong>5500W em 220V:</strong> Corrente ~25A → Cabo <strong>4,0mm²</strong> + Disjuntor <strong>32A</strong>.<br>• <strong>5500W em 127V:</strong> Corrente ~43A → Cabo <strong>10,0mm²</strong> + Disjuntor <strong>50A</strong>.<br>• <strong>7500W em 220V:</strong> Corrente ~34A → Cabo <strong>6,0mm²</strong> + Disjuntor <strong>40A</strong>.</div>`);
+      } else if (lower.includes('curva b') || lower.includes('curva c')) {
+        localBlocks.push(`<div><strong>Disjuntores DIN (Curva B vs Curva C):</strong><br>• <strong>Curva B (3 a 5x In):</strong> Cargas resistivas (chuveiros, torneiras elétricas, iluminação e tomadas residenciais).<br>• <strong>Curva C (5 a 10x In):</strong> Cargas indutivas com pico de partida (motores, bombas, ar-condicionado e ferramentas).</div>`);
+      }
+
+      // 4. Busca produtos correspondentes na loja
+      const words = lower.split(/\s+/).filter(w => w.length >= 3 && !['qual', 'quais', 'para', 'que', 'serve', 'como', 'preço', 'valor', 'tem', 'loja'].includes(w));
+      if (words.length > 0) {
+        const matchedProducts = appState.products.filter(p => words.some(w => p.name.toLowerCase().includes(w) || String(p.group || '').toLowerCase().includes(w)));
+        if (matchedProducts.length > 0) {
+          localBlocks.push(`<div><strong>Produtos Encontrados no Estoque (${matchedProducts.length}):</strong><ul class="list-disc pl-4 mt-1 space-y-0.5">${matchedProducts.slice(0, 5).map(p => `<li>${escapeHtmlStr(p.name)} — <strong>${formatBRL(p.price)}</strong> (Saldo: ${p.stock} un.)</li>`).join('')}</ul></div>`);
+        }
+      }
+
+      if (assistenteOnlineEnabled) {
+        if (btn) { btn.disabled = true; btn.textContent = 'Pesquisando...'; }
+        const loadingBubble = appendAssistenteBubble(`<div class="text-sky-400 font-semibold animate-pulse">Consultando estoque e pesquisando na web...</div>`);
+        const webData = await searchWebForAssistant(q);
+        if (loadingBubble) loadingBubble.remove();
+        if (btn) { btn.disabled = false; btn.textContent = 'Enviar'; }
+
+        let html = `<div class="font-bold text-sky-400">Assistente IA • Estoque & Pesquisa Web</div>`;
+        if (localBlocks.length > 0) {
+          html += `<div class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-700/80 space-y-1.5">${localBlocks.join('')}</div>`;
+        }
+
+        if (webData.results.length > 0) {
+          const hit = webData.results[0];
+          html += `
+            <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-1">
+              <div class="text-[10px] font-bold uppercase text-emerald-400">${escapeHtmlStr(hit.source)} • ${escapeHtmlStr(hit.title)}</div>
+              <p class="text-slate-200">${escapeHtmlStr(hit.text)}</p>
+              <a href="${hit.url}" target="_blank" rel="noopener noreferrer" class="inline-block text-[11px] font-bold text-sky-400 hover:underline mt-1">Abrir fonte completa &rarr;</a>
+            </div>
+          `;
+        } else if (localBlocks.length === 0) {
+          html += `<p class="text-slate-300">Não encontrei um resumo enciclopédico direto para <strong>"${escapeHtmlStr(webData.searchTerm)}"</strong>, mas você pode abrir a busca completa nos atalhos abaixo:</p>`;
+        }
+
+        html += `
+          <div class="flex flex-wrap gap-2 pt-1">
+            <a href="https://www.google.com/search?q=${encodeURIComponent(webData.searchTerm)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-[11px] font-semibold text-sky-300">Pesquisar no Google &rarr;</a>
+            <a href="https://lista.mercadolivre.com.br/${encodeURIComponent(webData.searchTerm)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-[11px] font-semibold text-amber-300">Cotar Preço Mercado Livre &rarr;</a>
+          </div>
+        `;
+        appendAssistenteBubble(html);
+      } else {
+        let html = `<div class="font-bold text-sky-400">Assistente IA • Consulta Local</div>`;
+        html += localBlocks.length > 0
+          ? localBlocks.join('')
+          : `<p>Nenhum dado local correspondente encontrado. Ative o botão <strong>Pesquisa Online</strong> no topo para consultar na internet.</p>`;
+        appendAssistenteBubble(html);
+      }
     }
 
     // ==================== WIDGET FLUTUANTE WHATSAPP WEB ====================
@@ -3876,26 +3775,12 @@
       }
     }
 
-    function populateWhatsAppCustomers() {
-      const sel = document.getElementById('wa-customer-select');
-      if (!sel) return;
-      const clients = appState.entities.filter(e => e.type === 'Cliente' && e.phone);
-      sel.innerHTML = '<option value="">-- Selecione ou digite o telefone --</option>' +
-        clients.map(c => `<option value="${escapeHtmlStr(c.phone)}">${escapeHtmlStr(c.name)} (${escapeHtmlStr(c.phone)})</option>`).join('');
-    }
-
-    function onSelectWhatsAppCustomer(phoneVal) {
-      if (phoneVal) {
-        document.getElementById('wa-phone-input').value = phoneVal;
-      }
-    }
-
     function openDockedWhatsAppWindow(customUrl = 'https://web.whatsapp.com') {
       const width = 440;
       const height = 660;
-      const left = Math.max(0, window.screen.availWidth - width - 16);
-      const top = Math.max(0, window.screen.availHeight - height - 48);
-      const features = `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=yes,status=no,resizable=yes,scrollbars=yes`;
+      const left = Math.max(0, window.screen.availWidth - width - 20);
+      const top = Math.max(0, window.screen.availHeight - height - 60);
+      const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
 
       if (waDockedWindowRef && !waDockedWindowRef.closed) {
         if (customUrl !== 'https://web.whatsapp.com') {
@@ -3903,39 +3788,53 @@
         }
         waDockedWindowRef.focus();
       } else {
-        waDockedWindowRef = window.open(customUrl, 'EletroShopWhatsAppWeb', features);
+        waDockedWindowRef = window.open(customUrl, 'EletroShopWhatsAppDocked', features);
         if (!waDockedWindowRef) {
-          showToast('Permita pop-ups no navegador para abrir a janela do WhatsApp Web.', true);
+          showToast('Permita pop-ups para abrir a mini-janela acoplada do WhatsApp Web.', true);
         }
       }
     }
 
+    function populateWhatsAppCustomers() {
+      const sel = document.getElementById('wa-customer-select');
+      if (!sel) return;
+      const clients = appState.entities.filter(e => e.type === 'Cliente' && e.phone && e.phone !== '-');
+      sel.innerHTML = `<option value="">-- Selecione ou digite o telefone --</option>` +
+        clients.map(c => `<option value="${escapeHtmlStr(c.phone)}">${escapeHtmlStr(c.name)} (${escapeHtmlStr(c.phone)})</option>`).join('');
+    }
+
+    function onSelectWhatsAppCustomer(phone) {
+      const phoneInput = document.getElementById('wa-phone-input');
+      if (phoneInput && phone) phoneInput.value = phone;
+    }
+
     function fillWhatsAppPDVCartMessage() {
+      const msgBox = document.getElementById('wa-message-input');
+      if (!msgBox) return;
       if (cartItems.length === 0) {
         return showToast('O carrinho do PDV está vazio no momento.', true);
       }
-      const { subtotal, discountAmount, total } = calculatePDVTotals();
-      const customer = document.getElementById('pdv-customer-select')?.value || 'Cliente';
       const storeName = appState.store?.name || 'Eletro Shop';
+      const customer = document.getElementById('pdv-customer-select')?.value || 'Cliente';
+      const { subtotal, discountAmount, total } = getPDVCartTotals();
       const lines = cartItems.map(i => `• ${i.qty}x ${i.name} — ${formatBRL(i.price * i.qty)}`).join('\n');
-      let msg = `Olá *${customer}*! Segue o orçamento da *${storeName}*:\n\n${lines}\n\nSubtotal: ${formatBRL(subtotal)}`;
-      if (discountAmount > 0) msg += `\nDesconto: -${formatBRL(discountAmount)}`;
-      msg += `\n*Total: ${formatBRL(total)}*`;
-      document.getElementById('wa-message-input').value = msg;
+      msgBox.value = `*Orçamento • ${storeName}*\nOlá, ${customer}! Seguem os itens cotados:\n\n${lines}\n\nSubtotal: ${formatBRL(subtotal)}${discountAmount > 0 ? `\nDesconto: -${formatBRL(discountAmount)}` : ''}\n*Total Final: ${formatBRL(total)}*`;
     }
 
     function applyWhatsAppTemplate(type) {
+      const msgBox = document.getElementById('wa-message-input');
       const storeName = appState.store?.name || 'Eletro Shop';
-      const templates = {
-        retirada: `Olá! Seu pedido na *${storeName}* já está separado e pronto para retirada no balcão.`,
-        entrega: `Olá! Seu pedido da *${storeName}* acabou de sair para entrega.`
-      };
-      document.getElementById('wa-message-input').value = templates[type] || '';
+      if (!msgBox) return;
+      if (type === 'retirada') {
+        msgBox.value = `Olá! Aqui é da *${storeName}*. Seu pedido já está separado e pronto para retirada no balcão!`;
+      } else if (type === 'entrega') {
+        msgBox.value = `Olá! Aqui é da *${storeName}*. Seu pedido acabou de sair para entrega!`;
+      }
     }
 
     function sendWhatsAppQuickMessage() {
-      const rawPhone = (document.getElementById('wa-phone-input')?.value || '').replace(/\D/g, '');
-      const text = (document.getElementById('wa-message-input')?.value || '').trim();
+      const rawPhone = String(document.getElementById('wa-phone-input')?.value || '').replace(/\D/g, '');
+      const text = String(document.getElementById('wa-message-input')?.value || '').trim();
       if (!rawPhone || rawPhone.length < 10) {
         return showToast('Informe um número de WhatsApp válido com DDD.', true);
       }
@@ -3944,6 +3843,7 @@
       openDockedWhatsAppWindow(url);
     }
 
+    // ==================== RENDERIZAÇÃO GLOBAL ====================
     function renderAllViews() {
       updateDashboardKPIs();
       renderProductsTable();
@@ -3955,21 +3855,21 @@
       renderCostsTable();
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      loadLocalState();
+    window.addEventListener('DOMContentLoaded', () => {
       initSupabaseClient();
+      loadLocalState();
       applyStoreIdentity();
-      const savedSession = sessionStorage.getItem(AUTH_SESSION_KEY);
-      if (savedSession) {
-        try {
+      renderAllViews();
+
+      try {
+        const savedSession = sessionStorage.getItem(AUTH_SESSION_KEY);
+        if (savedSession) {
           currentUser = JSON.parse(savedSession);
-          if (currentUser && currentUser.name) {
-            applyAuthenticatedSession();
-            await pullStateFromSupabase(false);
-          }
-        } catch {
-          sessionStorage.removeItem(AUTH_SESSION_KEY);
+          applyAuthenticatedSession();
+          pullStateFromSupabase(false);
         }
+      } catch (e) {
+        console.warn(e);
       }
     });
   </script>
