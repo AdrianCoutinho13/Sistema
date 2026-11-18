@@ -1454,8 +1454,12 @@
       'Geral'
     ];
 
-    // Dicionário Global Expandido • Brasil e Mundo (Elétrica, Hidráulica, Ferramentas, Tintas, Construção, Iluminação)
+    // Dicionário Global Expandido • Brasil e Mundo (Elétrica, Hidráulica, Ferramentas, Pilhas, Tintas, Construção, Iluminação)
     const GLOBAL_BARCODE_DATABASE = {
+      // Pilhas & Baterias
+      '7897013534218': { name: 'Pilha Alcalina AAA Palito Cartela com 4 Unidades - Elgin', group: 'Utilidades & Acessórios' },
+      '7897013585661': { name: 'Lâmpada Bulbo LED T 30W Bivolt 6500K - Elgin', group: 'Iluminação LED' },
+
       // Cabos e Fios
       '7899278978028': { name: 'Cabo Flexível 6,0mm² 100m Preto - Megatron', group: 'Cabos & Fios' },
       '7899278010018': { name: 'Cabo Flexível 2,5mm² 100m Azul - Megatron', group: 'Cabos & Fios' },
@@ -2431,20 +2435,9 @@
         `${code} produto`
       ];
 
-      // 1. Consulta resultados reais da web via Jina Reader / DuckDuckGo Lite / AllOrigins
-      const proxyTargets = [
-        `https://r.jina.ai/http://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQueries[0])}`,
-        `https://api.allorigins.win/get?url=${encodeURIComponent(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQueries[0])}`)}`,
-        `https://r.jina.ai/http://cosmos.bluesoft.com.br/produtos/${encodeURIComponent(code)}`
-      ];
-
-      const [jinaDdg, allOriginsDdg, jinaCosmos] = await Promise.all([
-        fetchTextWithTimeout(proxyTargets[0], 5000),
-        fetchJsonWithTimeout(proxyTargets[1], 5000),
-        fetchTextWithTimeout(proxyTargets[2], 4500)
-      ]);
-
-      // Analisa resposta direta da página do produto no Cosmos GS1 Brasil
+      // Consulta direta prioritária na API pública do Cosmos GS1 Brasil para EANs
+      const cosmosDirectUrl = `https://r.jina.ai/https://cosmos.bluesoft.com.br/produtos/${encodeURIComponent(code)}`;
+      const jinaCosmos = await fetchTextWithTimeout(cosmosDirectUrl, 4000);
       if (jinaCosmos) {
         const titleMatch = jinaCosmos.match(/Title:\s*(.+)/i) || jinaCosmos.match(/^#\s+(.+)$/m);
         if (titleMatch && titleMatch[1]) {
@@ -2455,13 +2448,21 @@
         }
       }
 
-      // Analisa títulos e snippets retornados da busca na web
+      const proxyTargets = [
+        `https://r.jina.ai/http://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQueries[0])}`,
+        `https://api.allorigins.win/get?url=${encodeURIComponent(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQueries[0])}`)}`
+      ];
+
+      const [jinaDdg, allOriginsDdg] = await Promise.all([
+        fetchTextWithTimeout(proxyTargets[0], 4500),
+        fetchJsonWithTimeout(proxyTargets[1], 4500)
+      ]);
+
       const ddgTexts = [];
       if (jinaDdg) ddgTexts.push(jinaDdg);
       if (allOriginsDdg && allOriginsDdg.contents) ddgTexts.push(allOriginsDdg.contents);
 
       for (const body of ddgTexts) {
-        // Links Markdown retornados pelo Jina Reader: [Título do Resultado](url)
         const mdLinks = [...body.matchAll(/\[([^\]]{6,140})\]\(https?:\/\/[^)]+\)/g)];
         for (const m of mdLinks) {
           const raw = m[1];
@@ -2469,23 +2470,8 @@
           const cleaned = cleanExtractedProductTitle(raw, code);
           if (cleaned) extracted.push({ name: cleaned, source: 'Busca Web IA' });
         }
-
-        // Âncoras HTML de resultados: <a class="result__a" ...>Título</a>
-        const htmlLinks = [...body.matchAll(/class="result__a"[^>]*>([\s\S]*?)<\/a>/gi)];
-        for (const m of htmlLinks) {
-          const cleaned = cleanExtractedProductTitle(m[1], code);
-          if (cleaned) extracted.push({ name: cleaned, source: 'Busca Web IA' });
-        }
-
-        // Busca também menção de preço em R$ nos snippets
-        const priceMatch = body.match(/R\$\s*(\d{1,4}[.,]\d{2})/);
-        if (priceMatch && extracted.length > 0 && !extracted[0].price) {
-          const parsedPrice = Number(priceMatch[1].replace('.', '').replace(',', '.'));
-          if (!isNaN(parsedPrice) && parsedPrice > 0) extracted[0].price = parsedPrice;
-        }
       }
 
-      // Deduplica mantendo os melhores nomes
       const unique = [];
       const seen = new Set();
       for (const item of extracted) {
@@ -2526,7 +2512,7 @@
         button.disabled = true;
         button.textContent = 'IA Varrendo...';
       }
-      setBarcodeLookupStatus('Varrendo base global de materiais de construção, elétrica e hidráulica...', 'loading');
+      setBarcodeLookupStatus('Consultando base oficial do Cosmos GS1 Brasil e catálogos...', 'loading');
 
       try {
         let productName = '';
@@ -2536,95 +2522,63 @@
         const aiCandidates = [];
         const gs1Info = parseGs1CountryAndPrefix(code);
 
-        // 1. Verifica no Dicionário Global Expandido
+        // 1. Dicionário Local / Global
         if (GLOBAL_BARCODE_DATABASE[code]) {
           productName = GLOBAL_BARCODE_DATABASE[code].name;
           categoryName = GLOBAL_BARCODE_DATABASE[code].group;
           aiCandidates.push({ name: productName, group: categoryName });
         } else {
-          // 2. Mapeamento por Prefixo GS1 do Fabricante (7 ou 3 dígitos)
-          const prefix7 = code.slice(0, 7);
-          const prefix3 = code.slice(0, 3);
+          // 2. Consulta Web em Tempo Real (Cosmos GS1, Open Products Facts, etc.)
+          const [webResults, offBr, offWorld, opff, upcDb] = await Promise.all([
+            searchProductNameFromWebIndex(code),
+            fetchJsonWithTimeout(`https://br.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3000),
+            fetchJsonWithTimeout(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3000),
+            fetchJsonWithTimeout(`https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3000),
+            fetchJsonWithTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`, 3500)
+          ]);
 
-          const BR_PREFIX_MAPPINGS = {
-            '7899278': { brand: 'Megatron', group: 'Cabos & Fios', names: ['Cabo Flexível 6,0mm² 100m Preto - Megatron', 'Cabo Flexível 2,5mm² 100m Azul - Megatron', 'Cabo Flexível 4,0mm² 100m Vermelho - Megatron'] },
-            '7897613': { brand: 'Prysmian / Sil', group: 'Cabos & Fios', names: ['Cabo Flexível 2,5mm² 100m Azul - Prysmian', 'Cabo Flexível 4,0mm² 100m Vermelho - Prysmian', 'Cabo Flexível 6,0mm² 100m Preto - Sil'] },
-            '7891001': { brand: 'Siemens', group: 'Elétrica & Automação', names: ['Disjuntor DIN Bipolar 32A Curva C - Siemens', 'Disjuntor DIN Unipolar 20A Curva C - Siemens'] },
-            '7891435': { brand: 'Schneider Electric', group: 'Elétrica & Automação', names: ['Disjuntor DIN Unipolar 20A Curva C - Schneider Electric', 'Disjuntor DIN Bipolar 40A Curva C - Schneider Electric'] },
-            '7893401': { brand: 'Steck', group: 'Elétrica & Automação', names: ['Disjuntor DIN Tripolar 50A Curva C - Steck', 'Tomada Modular 10A - Steck'] },
-            '7891960': { brand: 'Tigre', group: 'Hidráulica & Conexões', names: ['Tubo PVC Soldável 25mm 6m - Tigre', 'Joelho 90° PVC Soldável 25mm - Tigre', 'Caixa d\'Água 500L - Tigre'] },
-            '7891961': { brand: 'Amanco Wavin', group: 'Hidráulica & Conexões', names: ['Tubo PVC Esgoto 100mm 6m - Amanco Wavin', 'Tê Soldável 25mm - Amanco'] },
-            '7896451': { brand: 'Lorenzetti', group: 'Chuveiros & Aquecedores', names: ['Ducha Eletrônica Advanced 7500W 220V - Lorenzetti', 'Resistência Ducha Advanced 7500W - Lorenzetti', 'Torneira Elétrica Versatille 5500W - Lorenzetti'] },
-            '7897395': { brand: 'Avant / Taschibra', group: 'Iluminação LED', names: ['Painel Plafon LED Redondo 18W - Avant', 'Refletor LED Holofote 100W - Avant', 'Lâmpada LED Bulbo 9W - Osram/Avant'] },
-            '7898231': { brand: '3M', group: 'Elétrica & Automação', names: ['Fita Isolante Antichamas 19mm x 20m - 3M Scotch', 'Fita Dupla Face Fixa Forte 3M'] },
-            '7891114': { brand: 'Tramontina', group: 'Ferramentas', names: ['Alicate Universal 8" Isolado 1000V - Tramontina', 'Jogo de Chaves de Fenda 6 Peças - Tramontina', 'Trena Metálica 5m - Tramontina'] },
-            '7893946': { brand: 'Vonder', group: 'Ferramentas', names: ['Furadeira de Impacto 650W 127V - Vonder', 'Esmerilhadeira Angular 4.1/2" 850W - Vonder', 'Jogo de Brocas 10 Peças - Vonder'] },
-            '7891222': { brand: 'Quartzolit', group: 'Construção Civil', names: ['Argamassa Colante AC-II Externa 20kg - Quartzolit', 'Rejunte Acrílico Branco 1kg - Quartzolit'] },
-            '7891025': { brand: 'Votoran / Vedacit', group: 'Construção Civil', names: ['Cimento CP II-E-32 50kg - Votoran', 'Impermeabilizante Vedacit 18L - Otto Baumgart'] },
-            '7891019': { brand: 'Coral / Suvinil', group: 'Tintas & Pintura', names: ['Tinta Acrílica Fosca Branco 18L - Coral', 'Esmalte Sintético Brilhante 3,6L - Suvinil', 'Massa Corrida PVA 25kg - Coral'] }
-          };
+          if (Array.isArray(webResults) && webResults.length > 0) {
+            const validWeb = webResults.filter(w => !/just a moment|image|cloudflare|captcha|security|access denied|logotipo|logo|bluesoft cosmos/i.test(w.name));
+            if (validWeb.length > 0) {
+              productName = validWeb[0].name;
+              if (validWeb[0].price) suggestedPrice = validWeb[0].price;
+              validWeb.forEach(w => aiCandidates.push({ name: w.name, group: inferCategoryFromProductName(w.name), price: w.price || null }));
+            }
+          }
 
-          if (BR_PREFIX_MAPPINGS[prefix7]) {
-            const mapped = BR_PREFIX_MAPPINGS[prefix7];
-            brandName = mapped.brand;
-            categoryName = mapped.group;
-            const lastDigit = parseInt(code.slice(-1), 10) || 0;
-            productName = mapped.names[lastDigit % mapped.names.length];
-            mapped.names.forEach(n => aiCandidates.push({ name: n, group: mapped.group }));
-          } else {
-            // 3. Varredura Web em Tempo Real (Cosmos GS1, Open Food/Products Facts e Motores de Busca)
-            const [webResults, offBr, offWorld, opff, obf, upcDb] = await Promise.all([
-              searchProductNameFromWebIndex(code),
-              fetchJsonWithTimeout(`https://br.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
-              fetchJsonWithTimeout(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
-              fetchJsonWithTimeout(`https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
-              fetchJsonWithTimeout(`https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
-              fetchJsonWithTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`, 3800)
-            ]);
-
-            if (Array.isArray(webResults) && webResults.length > 0) {
-              const validWeb = webResults.filter(w => !/just a moment|image|cloudflare|captcha|security|access denied|logotipo|logo/i.test(w.name));
-              if (validWeb.length > 0) {
-                productName = validWeb[0].name;
-                if (validWeb[0].price) suggestedPrice = validWeb[0].price;
-                validWeb.forEach(w => aiCandidates.push({ name: w.name, group: inferCategoryFromProductName(w.name), price: w.price || null }));
+          const offResponses = [offBr, offWorld, opff];
+          for (const json of offResponses) {
+            if (json && (json.status === 1 || json.status === '1') && json.product) {
+              const p = json.product;
+              const foundName = p.product_name_pt || p.product_name || p.generic_name || '';
+              const foundBrand = String(p.brands || '').split(',')[0].trim();
+              const foundCat = String(p.categories || '').split(',')[0].trim();
+              if (foundName && !/just a moment|image|cloudflare/i.test(foundName)) {
+                if (!productName) {
+                  productName = foundName;
+                  brandName = foundBrand;
+                  categoryName = foundCat;
+                }
+                const fullLabel = foundBrand && !foundName.toLowerCase().includes(foundBrand.toLowerCase()) ? `${foundBrand} ${foundName}` : foundName;
+                aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
               }
             }
+          }
 
-            const offResponses = [offBr, offWorld, opff, obf];
-            for (const json of offResponses) {
-              if (json && (json.status === 1 || json.status === '1') && json.product) {
-                const p = json.product;
-                const foundName = p.product_name_pt || p.product_name || p.generic_name || '';
-                const foundBrand = String(p.brands || '').split(',')[0].trim();
-                const foundCat = String(p.categories || '').split(',')[0].trim();
-                if (foundName && !/just a moment|image|cloudflare/i.test(foundName)) {
-                  if (!productName) {
-                    productName = foundName;
-                    brandName = foundBrand;
-                    categoryName = foundCat;
-                  }
-                  const fullLabel = foundBrand && !foundName.toLowerCase().includes(foundBrand.toLowerCase()) ? `${foundBrand} ${foundName}` : foundName;
-                  aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
+          if (upcDb && Array.isArray(upcDb.items) && upcDb.items.length > 0) {
+            upcDb.items.forEach(item => {
+              const title = String(item.title || '').trim();
+              const brand = String(item.brand || '').trim();
+              if (title && !/just a moment|image|cloudflare/i.test(title)) {
+                if (!productName) {
+                  productName = title;
+                  brandName = brand;
+                  categoryName = item.category || '';
                 }
+                const fullLabel = brand && !title.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${title}` : title;
+                aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
               }
-            }
-
-            if (upcDb && Array.isArray(upcDb.items) && upcDb.items.length > 0) {
-              upcDb.items.forEach(item => {
-                const title = String(item.title || '').trim();
-                const brand = String(item.brand || '').trim();
-                if (title && !/just a moment|image|cloudflare/i.test(title)) {
-                  if (!productName) {
-                    productName = title;
-                    brandName = brand;
-                    categoryName = item.category || '';
-                  }
-                  const fullLabel = brand && !title.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${title}` : title;
-                  aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
-                }
-              });
-            }
+            });
           }
         }
 
@@ -2648,12 +2602,14 @@
           setBarcodeLookupStatus(`Produto identificado e preenchido automaticamente!`, 'success');
           showToast(`Preenchido: ${finalName}`);
         } else {
-          const fallbackBrand = brandName || (code.startsWith('789') ? 'Material de Construção / Elétrica' : 'Produto Importado');
-          const fallbackName = `${fallbackBrand} EAN ${code}`;
+          // Se não encontrou nome exato na web, cria nome descritivo limpo baseado no prefixo GS1
+          const prefix3 = code.slice(0, 3);
+          const brandFallback = prefix3 === '789' || prefix3 === '790' ? 'Produto Nacional EAN' : 'Produto Importado EAN';
+          const fallbackName = `${brandFallback} ${code}`;
           document.getElementById('prod-name').value = fallbackName;
           document.getElementById('prod-name').focus();
           document.getElementById('prod-name').select();
-          setBarcodeLookupStatus('Código lido! Nome sugerido preenchido (você pode ajustar se desejar).', 'warning');
+          setBarcodeLookupStatus('Código lido! Nome preenchido (você pode ajustar se desejar).', 'warning');
         }
 
         renderBarcodeAiPanel({
