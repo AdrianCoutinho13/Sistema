@@ -2511,6 +2511,7 @@
 
         const prefix7 = code.slice(0, 7);
         const BR_MAPPINGS = {
+          '7899278': { brand: 'Megatron', group: 'Cabos & Fios', names: ['Cabo Flexível 6,0mm² 100m Preto - Megatron', 'Cabo Flexível 2,5mm² 100m Azul - Megatron', 'Cabo Flexível 4,0mm² 100m Vermelho - Megatron'] },
           '7891960': { brand: 'Tigre', group: 'Hidráulica & Conexões', names: ['Tubo PVC Soldável 25mm 6m - Tigre', 'Joelho 90° PVC 25mm - Tigre', 'Luva Soldável 25mm - Tigre', 'Caixa d\'Água 500L - Tigre'] },
           '7891961': { brand: 'Amanco Wavin', group: 'Hidráulica & Conexões', names: ['Tubo PVC Esgoto 100mm 6m - Amanco', 'Tê Soldável 25mm - Amanco'] },
           '7896451': { brand: 'Lorenzetti', group: 'Chuveiros & Aquecedores', names: ['Ducha Lorenzetti Advanced Multitemperaturas 220V', 'Resistência Lorenzetti 5500W 220V', 'Torneira Elétrica Versatille 220V - Lorenzetti'] },
@@ -2524,9 +2525,10 @@
           '7891019': { brand: 'Coral / Suvinil', group: 'Tintas & Pintura', names: ['Tinta Acrílica Fosca Rendimento Extra Branco 18L - Coral', 'Esmalte Sintético Cor Brilhante 3,6L - Suvinil'] }
         };
 
-        if (KNOWN_BARCODES[code]) {
-          productName = KNOWN_BARCODES[code].name;
-          categoryName = KNOWN_BARCODES[code].group;
+        if (code === '7899278978028' || KNOWN_BARCODES[code]) {
+          const item = code === '7899278978028' ? { name: 'Cabo Flexível 6,0mm² 100m Preto - Megatron', group: 'Cabos & Fios' } : KNOWN_BARCODES[code];
+          productName = item.name;
+          categoryName = item.group;
           aiCandidates.push({ name: productName, group: categoryName });
         } else if (BR_MAPPINGS[prefix7]) {
           const mapped = BR_MAPPINGS[prefix7];
@@ -2609,6 +2611,11 @@
         let finalName = String(productName).trim();
         if (brandName && !finalName.toLowerCase().includes(brandName.toLowerCase())) {
           finalName = `${brandName} ${finalName}`;
+        }
+
+        // Se o nome vier genérico da web, mas conhecemos o fabricante pelo prefixo, montamos o nome comercial correto com a marca
+        if (/Mercadoria EAN|Material Elétrico|Produto EAN/i.test(finalName) && brandName) {
+          finalName = `${brandName} - Item EAN ${code.slice(-5)}`;
         }
 
         const inferredGroup = categoryName ? (categoryName.replace(/^[a-z]{2,3}:/i, '').replace(/[-_]/g, ' ').trim() || inferCategoryFromProductName(finalName)) : inferCategoryFromProductName(finalName);
