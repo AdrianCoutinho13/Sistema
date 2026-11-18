@@ -2491,6 +2491,7 @@
         const prefix7 = code.slice(0, 7);
         const BR_MAPPINGS = {
           '7899278': { brand: 'Megatron', group: 'Cabos & Fios', names: ['Cabo Flexível 6,0mm² 100m Preto - Megatron', 'Cabo Flexível 2,5mm² 100m Azul - Megatron', 'Cabo Flexível 4,0mm² 100m Vermelho - Megatron'] },
+          '7899278978028': { brand: 'Megatron', group: 'Cabos & Fios', names: ['Cabo Flexível 6,0mm² 100m Preto - Megatron'] },
           '7891960': { brand: 'Tigre', group: 'Hidráulica & Conexões', names: ['Tubo PVC Soldável 25mm 6m - Tigre', 'Joelho 90° PVC 25mm - Tigre', 'Luva Soldável 25mm - Tigre', 'Caixa d\'Água 500L - Tigre'] },
           '7891961': { brand: 'Amanco Wavin', group: 'Hidráulica & Conexões', names: ['Tubo PVC Esgoto 100mm 6m - Amanco', 'Tê Soldável 25mm - Amanco'] },
           '7896451': { brand: 'Lorenzetti', group: 'Chuveiros & Aquecedores', names: ['Ducha Lorenzetti Advanced Multitemperaturas 220V', 'Resistência Lorenzetti 5500W 220V', 'Torneira Elétrica Versatille 220V - Lorenzetti'] },
@@ -2504,11 +2505,16 @@
           '7891019': { brand: 'Coral / Suvinil', group: 'Tintas & Pintura', names: ['Tinta Acrílica Fosca Rendimento Extra Branco 18L - Coral', 'Esmalte Sintético Cor Brilhante 3,6L - Suvinil'] }
         };
 
-        if (code === '7899278978028' || KNOWN_BARCODES[code]) {
-          const item = code === '7899278978028' ? { name: 'Cabo Flexível 6,0mm² 100m Preto - Megatron', group: 'Cabos & Fios' } : KNOWN_BARCODES[code];
-          productName = item.name;
-          categoryName = item.group;
+        if (KNOWN_BARCODES[code]) {
+          productName = KNOWN_BARCODES[code].name;
+          categoryName = KNOWN_BARCODES[code].group;
           aiCandidates.push({ name: productName, group: categoryName });
+        } else if (BR_MAPPINGS[code]) {
+          const m = BR_MAPPINGS[code];
+          brandName = m.brand;
+          categoryName = m.group;
+          productName = m.names[0];
+          m.names.forEach(n => aiCandidates.push({ name: n, group: m.group }));
         } else if (BR_MAPPINGS[prefix7]) {
           const mapped = BR_MAPPINGS[prefix7];
           brandName = mapped.brand;
@@ -2572,11 +2578,6 @@
           }
         }
 
-        // Se a varredura não encontrou título comercial limpo, utiliza a inteligência do prefixo GS1 para nomear com precisão de balcão
-        if (!productName || /just a moment|image|cloudflare|captcha|home|search/i.test(productName)) {
-          productName = '';
-        }
-
         let finalName = String(productName).trim();
         if (brandName && finalName && !finalName.toLowerCase().includes(brandName.toLowerCase())) {
           finalName = `${brandName} ${finalName}`;
@@ -2585,14 +2586,25 @@
         const inferredGroup = categoryName ? (categoryName.replace(/^[a-z]{2,3}:/i, '').replace(/[-_]/g, ' ').trim() || inferCategoryFromProductName(finalName)) : inferCategoryFromProductName(finalName);
         const resolvedGroup = inferCategoryFromProductName(finalName) !== 'Geral' ? inferCategoryFromProductName(finalName) : inferredGroup;
 
-        if (finalName) {
+        // PREENCHIMENTO AUTOMÁTICO IMEDIATO NO CAMPO NOME DO PRODUTO
+        if (finalName && !/just a moment|image|cloudflare/i.test(finalName)) {
           document.getElementById('prod-name').value = finalName;
           if (resolvedGroup && !userManuallySelectedGroup) {
             renderProductGroupOptions(resolvedGroup);
           }
+          if (suggestedPrice && suggestedPrice > 0) {
+            document.getElementById('prod-price').value = Number(suggestedPrice).toFixed(2);
+          }
+          setBarcodeLookupStatus(`Produto identificado e preenchido automaticamente!`, 'success');
+          showToast(`Preenchido: ${finalName}`);
         } else {
+          // Se o web scraper retornou nome genérico ou vazio, monta com base no prefixo GS1 Brasil e fabricante detectado
+          const fallbackBrand = brandName || (prefix7 === '7899278' ? 'Megatron' : prefix7 === '7891960' ? 'Tigre' : prefix7 === '7896451' ? 'Lorenzetti' : prefix7 === '7891435' ? 'Schneider' : 'Produto Nacional');
+          const fallbackName = `${fallbackBrand} EAN ${code}`;
+          document.getElementById('prod-name').value = fallbackName;
           document.getElementById('prod-name').focus();
-          setBarcodeLookupStatus('EAN escaneado! Digite o nome comercial exato do produto.', 'warning');
+          document.getElementById('prod-name').select();
+          setBarcodeLookupStatus('Código lido! Nome sugerido preenchido (você pode ajustar se desejar).', 'warning');
         }
 
         renderBarcodeAiPanel({
@@ -2606,15 +2618,10 @@
         });
 
         lastBarcodeLookup = code;
-        if (finalName) {
-          setBarcodeLookupStatus('Produto identificado e preenchido pela IA!', 'success');
-          showToast(`Preenchido: ${finalName}`);
-        }
       } catch (err) {
         console.error(err);
         document.getElementById('prod-name').focus();
-        setBarcodeLookupStatus('EAN escaneado. Digite o nome correto do produto.', 'warning');
-        showToast('Escaneado com sucesso. Informe o nome do produto.');
+        setBarcodeLookupStatus('EAN escaneado. Digite ou confirme o nome do produto.', 'warning');
       } finally {
         barcodeLookupInProgress = false;
         if (button) {
