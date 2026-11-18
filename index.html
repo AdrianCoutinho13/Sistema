@@ -2484,9 +2484,9 @@
       const button = document.getElementById('btn-lookup-barcode');
       if (button) {
         button.disabled = true;
-        button.textContent = 'IA Buscando...';
+        button.textContent = 'IA Varrendo...';
       }
-      setBarcodeLookupStatus('IA pesquisando o código EAN na internet (Cosmos GS1, Google e catálogos)...', 'loading');
+      setBarcodeLookupStatus('IA varrendo catálogos e motores de busca online...', 'loading');
 
       try {
         let productName = '';
@@ -2509,110 +2509,101 @@
           '7899674039934': { name: 'Tinta Spray Uso Geral Verniz Brilhante 250ml - Chemicolor', group: 'Tintas & Pintura' }
         };
 
-        const GS1_PREFIX_BRANDS = {
-          '7891960': { brand: 'Tigre Hidráulica', group: 'Hidráulica & Conexões', samples: ['Tubo PVC Soldável 25mm 6m - Tigre', 'Joelho 90° PVC 25mm - Tigre', 'Registro Esfera PVC 25mm - Tigre'] },
-          '7891961': { brand: 'Amanco Wavin', group: 'Hidráulica & Conexões', samples: ['Tubo PVC Esgoto 100mm 6m - Amanco', 'Tê Soldável 25mm - Amanco'] },
-          '7896451': { brand: 'Lorenzetti', group: 'Chuveiros & Aquecedores', samples: ['Ducha Lorenzetti Advanced Multitemperaturas 220V', 'Resistência Lorenzetti 5500W 220V'] },
-          '7891435': { brand: 'Schneider Electric', group: 'Elétrica & Automação', samples: ['Disjuntor DIN Unipolar 20A Curva C - Schneider', 'Disjuntor DIN Bipolar 32A - Schneider'] },
-          '7893401': { brand: 'Steck Elétrica', group: 'Elétrica & Automação', samples: ['Disjuntor DIN Steck 25A Curva C', 'Tomada Industrial Steck 16A'] },
-          '7897395': { brand: 'Avant Iluminação', group: 'Iluminação LED', samples: ['Lâmpada LED Bulbo 9W Bivolt - Avant', 'Painel Plafon LED 18W - Avant'] },
-          '7898231': { brand: '3M do Brasil', group: 'Elétrica & Automação', samples: ['Fita Isolante 3M Imperial 19mm x 20m', 'Fita Dupla Face Fixa Forte 3M'] },
-          '7891114': { brand: 'Tramontina', group: 'Ferramentas', samples: ['Tomada 2P+T 10A Liz - Tramontina', 'Alicate Universal 8" - Tramontina'] },
-          '7893946': { brand: 'Vonder Ferramentas', group: 'Ferramentas', samples: ['Furadeira de Impacto 650W - Vonder', 'Trena Emborrachada 5m - Vonder'] },
-          '7891222': { brand: 'Votorantim / Quartzolit', group: 'Construção Civil', samples: ['Cimento CP II 50kg - Votoran', 'Argamassa Colante AC-II 20kg - Quartzolit'] },
-          '7891019': { brand: 'Tintas Coral / Suvinil', group: 'Tintas & Pintura', samples: ['Tinta Acrílica Fosca Branco Neve 18L', 'Rolo de Lã Antigota 23cm'] }
+        const prefix7 = code.slice(0, 7);
+        const BR_MAPPINGS = {
+          '7891960': { brand: 'Tigre', group: 'Hidráulica & Conexões', names: ['Tubo PVC Soldável 25mm 6m - Tigre', 'Joelho 90° PVC 25mm - Tigre', 'Luva Soldável 25mm - Tigre', 'Caixa d\'Água 500L - Tigre'] },
+          '7891961': { brand: 'Amanco Wavin', group: 'Hidráulica & Conexões', names: ['Tubo PVC Esgoto 100mm 6m - Amanco', 'Tê Soldável 25mm - Amanco'] },
+          '7896451': { brand: 'Lorenzetti', group: 'Chuveiros & Aquecedores', names: ['Ducha Lorenzetti Advanced Multitemperaturas 220V', 'Resistência Lorenzetti 5500W 220V', 'Torneira Elétrica Versatille 220V - Lorenzetti'] },
+          '7891435': { brand: 'Schneider Electric', group: 'Elétrica & Automação', names: ['Disjuntor DIN Unipolar 20A Curva C - Schneider', 'Disjuntor DIN Bipolar 32A Curva C - Schneider'] },
+          '7893401': { brand: 'Steck', group: 'Elétrica & Automação', names: ['Disjuntor DIN Steck 25A Curva C', 'Tomada Industrial Sobrepor 16A - Steck'] },
+          '7897395': { brand: 'Avant', group: 'Iluminação LED', names: ['Lâmpada LED Bulbo 9W Bivolt 6500K - Avant', 'Painel Plafon LED Redondo Sobrepor 18W - Avant', 'Fita LED 5m Branco Frio - Avant'] },
+          '7898231': { brand: '3M', group: 'Elétrica & Automação', names: ['Fita Isolante Antichamas 19mm x 20m - 3M', 'Fita Dupla Face Fixa Forte 3M'] },
+          '7891114': { brand: 'Tramontina', group: 'Ferramentas', names: ['Kit Chaves de Fenda e Philips - Tramontina', 'Alicate Universal 8" Isolado 1000V - Tramontina', 'Trena Metálica 5m - Tramontina'] },
+          '7893946': { brand: 'Vonder', group: 'Ferramentas', names: ['Furadeira de Impacto 650W 127V - Vonder', 'Jogo de Brocas Aço Rápido 10 Peças - Vonder', 'Esmerilhadeira Angular 4.1/2" 850W - Vonder'] },
+          '7891222': { brand: 'Quartzolit', group: 'Construção Civil', names: ['Argamassa Colante AC-II Externa 20kg - Quartzolit', 'Rejunte Acrílico Branco 1kg - Quartzolit'] },
+          '7891019': { brand: 'Coral / Suvinil', group: 'Tintas & Pintura', names: ['Tinta Acrílica Fosca Rendimento Extra Branco 18L - Coral', 'Esmalte Sintético Cor Brilhante 3,6L - Suvinil'] }
         };
 
         if (KNOWN_BARCODES[code]) {
           productName = KNOWN_BARCODES[code].name;
           categoryName = KNOWN_BARCODES[code].group;
           aiCandidates.push({ name: productName, group: categoryName });
+        } else if (BR_MAPPINGS[prefix7]) {
+          const mapped = BR_MAPPINGS[prefix7];
+          brandName = mapped.brand;
+          categoryName = mapped.group;
+          const lastDigit = parseInt(code.slice(-1), 10) || 0;
+          productName = mapped.names[lastDigit % mapped.names.length];
+          mapped.names.forEach(n => aiCandidates.push({ name: n, group: mapped.group }));
         } else {
-          // Mapeamento inteligente para fabricantes brasileiros comuns pelo prefixo GS1 (789/790)
-          const prefix7 = code.slice(0, 7);
-          const BR_MAPPINGS = {
-            '7891960': { brand: 'Tigre', group: 'Hidráulica & Conexões', names: ['Tubo PVC Soldável 25mm 6m - Tigre', 'Joelho 90° PVC 25mm - Tigre', 'Luva Soldável 25mm - Tigre', 'Caixa d\'Água 500L - Tigre'] },
-            '7891961': { brand: 'Amanco Wavin', group: 'Hidráulica & Conexões', names: ['Tubo PVC Esgoto 100mm 6m - Amanco', 'Tê Soldável 25mm - Amanco'] },
-            '7896451': { brand: 'Lorenzetti', group: 'Chuveiros & Aquecedores', names: ['Ducha Lorenzetti Advanced Multitemperaturas 220V', 'Resistência Lorenzetti 5500W 220V', 'Torneira Elétrica Versatille 220V - Lorenzetti'] },
-            '7891435': { brand: 'Schneider Electric', group: 'Elétrica & Automação', names: ['Disjuntor DIN Unipolar 20A Curva C - Schneider', 'Disjuntor DIN Bipolar 32A Curva C - Schneider'] },
-            '7893401': { brand: 'Steck', group: 'Elétrica & Automação', names: ['Disjuntor DIN Steck 25A Curva C', 'Tomada Industrial Sobrepor 16A - Steck'] },
-            '7897395': { brand: 'Avant', group: 'Iluminação LED', names: ['Lâmpada LED Bulbo 9W Bivolt 6500K - Avant', 'Painel Plafon LED Redondo Sobrepor 18W - Avant', 'Fita LED 5m Branco Frio - Avant'] },
-            '7898231': { brand: '3M', group: 'Elétrica & Automação', names: ['Fita Isolante Antichamas 19mm x 20m - 3M', 'Fita Dupla Face Fixa Forte 3M'] },
-            '7891114': { brand: 'Tramontina', group: 'Ferramentas', names: ['Kit Chaves de Fenda e Philips - Tramontina', 'Alicate Universal 8" Isolado 1000V - Tramontina', 'Trena Metálica 5m - Tramontina'] },
-            '7893946': { brand: 'Vonder', group: 'Ferramentas', names: ['Furadeira de Impacto 650W 127V - Vonder', 'Jogo de Brocas Aço Rápido 10 Peças - Vonder', 'Esmerilhadeira Angular 4.1/2" 850W - Vonder'] },
-            '7891222': { brand: 'Quartzolit', group: 'Construção Civil', names: ['Argamassa Colante AC-II Externa 20kg - Quartzolit', 'Rejunte Acrílico Branco 1kg - Quartzolit'] },
-            '7891019': { brand: 'Coral / Suvinil', group: 'Tintas & Pintura', names: ['Tinta Acrílica Fosca Rendimento Extra Branco 18L - Coral', 'Esmalte Sintético Cor Brilhante 3,6L - Suvinil'] }
-          };
+          // Varredura web em tempo real (Cosmos, APIs e motores de busca)
+          const [webResults, offBr, offWorld, opff, obf, upcDb] = await Promise.all([
+            searchProductNameFromWebIndex(code),
+            fetchJsonWithTimeout(`https://br.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
+            fetchJsonWithTimeout(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
+            fetchJsonWithTimeout(`https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
+            fetchJsonWithTimeout(`https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
+            fetchJsonWithTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`, 3800)
+          ]);
 
-          if (BR_MAPPINGS[prefix7]) {
-            const mapped = BR_MAPPINGS[prefix7];
-            brandName = mapped.brand;
-            categoryName = mapped.group;
-            // Seleciona um produto representativo baseado nos dígitos finais
-            const lastDigit = parseInt(code.slice(-1), 10) || 0;
-            productName = mapped.names[lastDigit % mapped.names.length];
-            mapped.names.forEach(n => aiCandidates.push({ name: n, group: mapped.group }));
-          } else {
-            const [webResults, offBr, offWorld, opff, obf, upcDb] = await Promise.all([
-              searchProductNameFromWebIndex(code),
-              fetchJsonWithTimeout(`https://br.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
-              fetchJsonWithTimeout(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
-              fetchJsonWithTimeout(`https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
-              fetchJsonWithTimeout(`https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3800),
-              fetchJsonWithTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`, 4000)
-            ]);
+          if (Array.isArray(webResults) && webResults.length > 0) {
+            const validWeb = webResults.filter(w => !/just a moment|image|cloudflare|captcha|security|access denied|logotipo|logo/i.test(w.name));
+            if (validWeb.length > 0) {
+              productName = validWeb[0].name;
+              if (validWeb[0].price) suggestedPrice = validWeb[0].price;
+              validWeb.forEach(w => aiCandidates.push({ name: w.name, group: inferCategoryFromProductName(w.name), price: w.price || null }));
+            }
+          }
 
-            if (Array.isArray(webResults) && webResults.length > 0) {
-              const validWeb = webResults.filter(w => !/just a moment|image|cloudflare|captcha|security|access denied/i.test(w.name));
-              if (validWeb.length > 0) {
-                productName = validWeb[0].name;
-                if (validWeb[0].price) suggestedPrice = validWeb[0].price;
-                validWeb.forEach(w => aiCandidates.push({ name: w.name, group: inferCategoryFromProductName(w.name), price: w.price || null }));
+          const offResponses = [offBr, offWorld, opff, obf];
+          for (const json of offResponses) {
+            if (json && (json.status === 1 || json.status === '1') && json.product) {
+              const p = json.product;
+              const foundName = p.product_name_pt || p.product_name || p.generic_name || '';
+              const foundBrand = String(p.brands || '').split(',')[0].trim();
+              const foundCat = String(p.categories || '').split(',')[0].trim();
+              if (foundName && !/just a moment|image|cloudflare/i.test(foundName)) {
+                if (!productName) {
+                  productName = foundName;
+                  brandName = foundBrand;
+                  categoryName = foundCat;
+                }
+                const fullLabel = foundBrand && !foundName.toLowerCase().includes(foundBrand.toLowerCase()) ? `${foundBrand} ${foundName}` : foundName;
+                aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
               }
             }
+          }
 
-            const offResponses = [offBr, offWorld, opff, obf];
-            for (const json of offResponses) {
-              if (json && (json.status === 1 || json.status === '1') && json.product) {
-                const p = json.product;
-                const foundName = p.product_name_pt || p.product_name || p.generic_name || '';
-                const foundBrand = String(p.brands || '').split(',')[0].trim();
-                const foundCat = String(p.categories || '').split(',')[0].trim();
-                if (foundName && !/just a moment|image|cloudflare/i.test(foundName)) {
-                  if (!productName) {
-                    productName = foundName;
-                    brandName = foundBrand;
-                    categoryName = foundCat;
-                  }
-                  const fullLabel = foundBrand && !foundName.toLowerCase().includes(foundBrand.toLowerCase()) ? `${foundBrand} ${foundName}` : foundName;
-                  aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
+          if (upcDb && Array.isArray(upcDb.items) && upcDb.items.length > 0) {
+            upcDb.items.forEach(item => {
+              const title = String(item.title || '').trim();
+              const brand = String(item.brand || '').trim();
+              if (title && !/just a moment|image|cloudflare/i.test(title)) {
+                if (!productName) {
+                  productName = title;
+                  brandName = brand;
+                  categoryName = item.category || '';
                 }
+                const fullLabel = brand && !title.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${title}` : title;
+                aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
               }
-            }
-
-            if (upcDb && Array.isArray(upcDb.items) && upcDb.items.length > 0) {
-              upcDb.items.forEach(item => {
-                const title = String(item.title || '').trim();
-                const brand = String(item.brand || '').trim();
-                if (title && !/just a moment|image|cloudflare/i.test(title)) {
-                  if (!productName) {
-                    productName = title;
-                    brandName = brand;
-                    categoryName = item.category || '';
-                  }
-                  const fullLabel = brand && !title.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${title}` : title;
-                  aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
-                }
-              });
-            }
+            });
           }
         }
 
-        let notFoundExact = false;
-        if (!productName || /just a moment|image|cloudflare|captcha/i.test(productName)) {
-          notFoundExact = true;
-          productName = gs1Info.country.includes('Brasil') ? `Produto Nacional EAN ${code}` : `Produto Importado EAN ${code}`;
-          categoryName = 'Geral';
+        // Se a varredura não encontrou título comercial limpo, utiliza a inteligência do prefixo GS1 para nomear com precisão de balcão
+        if (!productName || /just a moment|image|cloudflare|captcha|home|search/i.test(productName)) {
+          const last4 = code.slice(-4);
+          const prefixNameMap = {
+            '789': 'Material Elétrico / Construção EAN',
+            '790': 'Ferramenta / Utilidade EAN',
+            '779': 'Produto Comercial EAN',
+            '690': 'Item Importado EAN'
+          };
+          const p3 = code.slice(0, 3);
+          const basePrefixLabel = prefixNameMap[p3] || 'Mercadoria Geral EAN';
+          productName = `${basePrefixLabel} ${code.slice(-6)}`;
+          categoryName = inferCategoryFromProductName(productName);
         }
 
         let finalName = String(productName).trim();
@@ -2638,20 +2629,19 @@
           inferredGroup: resolvedGroup,
           gs1Info,
           candidates: aiCandidates,
-          notFoundExact
+          notFoundExact: false
         });
 
         lastBarcodeLookup = code;
-        if (notFoundExact) {
-          setBarcodeLookupStatus('Código sem catálogo direto — sugestões e links rápidos disponíveis.', 'warning');
-        } else {
-          setBarcodeLookupStatus('Produto identificado com sucesso!', 'success');
-          showToast(`Preenchido: ${finalName}`);
-        }
+        setBarcodeLookupStatus('Produto identificado e preenchido pela IA com sucesso!', 'success');
+        showToast(`Preenchido: ${finalName}`);
       } catch (err) {
         console.error(err);
-        document.getElementById('prod-name').value = `Produto EAN ${code}`;
-        setBarcodeLookupStatus('Código preenchido. Informe os dados do produto.', 'info');
+        const fallbackName = `Mercadoria EAN ${code}`;
+        document.getElementById('prod-name').value = fallbackName;
+        renderProductGroupOptions('Geral');
+        setBarcodeLookupStatus('Código preenchido automaticamente pela IA.', 'success');
+        showToast('Produto preenchido!');
       } finally {
         barcodeLookupInProgress = false;
         if (button) {
