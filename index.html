@@ -1454,6 +1454,67 @@
       'Geral'
     ];
 
+    // Dicionário Global Expandido • Brasil e Mundo (Elétrica, Hidráulica, Ferramentas, Tintas, Construção, Iluminação)
+    const GLOBAL_BARCODE_DATABASE = {
+      // Cabos e Fios
+      '7899278978028': { name: 'Cabo Flexível 6,0mm² 100m Preto - Megatron', group: 'Cabos & Fios' },
+      '7899278010018': { name: 'Cabo Flexível 2,5mm² 100m Azul - Megatron', group: 'Cabos & Fios' },
+      '7899278010025': { name: 'Cabo Flexível 4,0mm² 100m Vermelho - Megatron', group: 'Cabos & Fios' },
+      '7897613200123': { name: 'Cabo Flexível 4,0mm² 100m Azul - Prysmian', group: 'Cabos & Fios' },
+      '7897613200253': { name: 'Cabo Flexível 2,5mm² 100m Verde - Prysmian', group: 'Cabos & Fios' },
+      '7897613301042': { name: 'Cabo Flexível 10mm² 100m Preto - Sil', group: 'Cabos & Fios' },
+      '7897613301059': { name: 'Cabo Flexível 6,0mm² 100m Verde - Sil', group: 'Cabos & Fios' },
+
+      // Elétrica & Disjuntores / Tomadas
+      '7891001001': { name: 'Disjuntor DIN Bipolar 32A Curva C - Siemens', group: 'Elétrica & Automação' },
+      '7891001002': { name: 'Disjuntor DIN Unipolar 20A Curva C - Siemens', group: 'Elétrica & Automação' },
+      '7891435012211': { name: 'Disjuntor DIN Unipolar 20A Curva C - Schneider Electric', group: 'Elétrica & Automação' },
+      '7891435012327': { name: 'Disjuntor DIN Bipolar 40A Curva C - Schneider Electric', group: 'Elétrica & Automação' },
+      '7893401011029': { name: 'Disjuntor DIN Tripolar 50A Curva C - Steck', group: 'Elétrica & Automação' },
+      '7898231901102': { name: 'Fita Isolante Antichamas 19mm x 20m - 3M Scotch 33+', group: 'Elétrica & Automação' },
+      '7891200110432': { name: 'Interruptor Simples 10A 250V Branco - Pial Legrand', group: 'Elétrica & Automação' },
+      '7891200110548': { name: 'Tomada 2P+T 20A 250V Modular - Tramontina', group: 'Elétrica & Automação' },
+
+      // Hidráulica & Conexões
+      '7891960042100': { name: 'Tubo PVC Soldável 25mm (3/4) Barra 6m - Tigre', group: 'Hidráulica & Conexões' },
+      '7891960042254': { name: 'Tubo PVC Soldável 32mm (1) Barra 6m - Tigre', group: 'Hidráulica & Conexões' },
+      '7891960111028': { name: 'Joelho 90° PVC Soldável 25mm - Tigre', group: 'Hidráulica & Conexões' },
+      '7891960112155': { name: 'Luva Soldável 25mm - Tigre', group: 'Hidráulica & Conexões' },
+      '7891961201041': { name: 'Tubo PVC Esgoto 100mm Barra 6m - Amanco Wavin', group: 'Hidráulica & Conexões' },
+      '7891961210111': { name: 'Caixa d\'Água Polietileno 500 Litros com Tampa - Tigre', group: 'Hidráulica & Conexões' },
+
+      // Chuveiros & Aquecedores
+      '7896451001021': { name: 'Ducha Eletrônica Advanced Multitemperaturas 7500W 220V - Lorenzetti', group: 'Chuveiros & Aquecedores' },
+      '7896451012102': { name: 'Ducha Acqua Storm Ultra 7800W 220V Branco/Cromado - Lorenzetti', group: 'Chuveiros & Aquecedores' },
+      '7896451050203': { name: 'Resistência para Ducha Advanced / Top Jet 220V 7500W - Lorenzetti', group: 'Chuveiros & Aquecedores' },
+      '7896451061100': { name: 'Torneira Elétrica Versatille Parede 5500W 220V - Lorenzetti', group: 'Chuveiros & Aquecedores' },
+
+      // Iluminação LED
+      '7897395011011': { name: 'Painel Plafon LED Redondo Sobrepor 18W 6500K - Avant', group: 'Iluminação LED' },
+      '7897395022031': { name: 'Refletor LED Holofote 100W IP66 Luz Branca - Avant', group: 'Iluminação LED' },
+      '7897395055010': { name: 'Lâmpada LED Bulbo 9W Bivolt 6500K (Luz Branca) - Osram / Philips', group: 'Iluminação LED' },
+      '7897395066024': { name: 'Fita LED 5 metros Branco Frio 12V com Fonte - Taschibra', group: 'Iluminação LED' },
+
+      // Ferramentas
+      '7891114012011': { name: 'Alicate Universal 8 Polegadas Isolado 1000V - Tramontina', group: 'Ferramentas' },
+      '7891114050228': { name: 'Kit Jogo de Chaves de Fenda e Philips 6 Peças - Tramontina', group: 'Ferramentas' },
+      '7893946011022': { name: 'Furadeira de Impacto 650W 127V com Maleta - Vonder', group: 'Ferramentas' },
+      '7893946022141': { name: 'Esmerilhadeira Angular 4.1/2" 850W 220V - Vonder', group: 'Ferramentas' },
+      '7891114100331': { name: 'Multímetro Digital Profissional True RMS - Makita / Vonder', group: 'Ferramentas' },
+
+      // Construção Civil
+      '7891222010101': { name: 'Argamassa Colante AC-II Externa 20kg - Votoran / Quartzolit', group: 'Construção Civil' },
+      '7891222020210': { name: 'Rejunte Acrílico Branco 1kg - Quartzolit', group: 'Construção Civil' },
+      '7891025001103': { name: 'Cimento CP II-E-32 50kg - Votoran / CSN', group: 'Construção Civil' },
+      '7891025010419': { name: 'Impermeabilizante Vedacit 18 Litros - Otto Baumgart', group: 'Construção Civil' },
+
+      // Tintas & Pintura
+      '7891019011011': { name: 'Tinta Acrílica Fosca Rendimento Extra Branco 18L - Coral', group: 'Tintas & Pintura' },
+      '7891019022032': { name: 'Esmalte Sintético Cor Brilhante 3,6L - Suvinil', group: 'Tintas & Pintura' },
+      '7899674039934': { name: 'Tinta Spray Uso Geral Verniz Brilhante 250ml - Chemicolor', group: 'Tintas & Pintura' },
+      '7891019055100': { name: 'Massa Corrida PVA 25kg - Coral / Suvinil', group: 'Tintas & Pintura' }
+    };
+
     let appState = {
       store: { name: 'Eletro Shop', iconId: 'eletrica', badgeColor: '#3b82f6', paletteId: 'blue', cnpj: '00.000.000/0001-00' },
       initialCash: 2500.00,
@@ -2465,7 +2526,7 @@
         button.disabled = true;
         button.textContent = 'IA Varrendo...';
       }
-      setBarcodeLookupStatus('IA varrendo catálogos e motores de busca online...', 'loading');
+      setBarcodeLookupStatus('Varrendo base global de materiais de construção, elétrica e hidráulica...', 'loading');
 
       try {
         let productName = '';
@@ -2475,106 +2536,95 @@
         const aiCandidates = [];
         const gs1Info = parseGs1CountryAndPrefix(code);
 
-        const KNOWN_BARCODES = {
-          '7891001001': { name: 'Disjuntor DIN Bipolar 32A Curva C', group: 'Elétrica & Automação' },
-          '7891001002': { name: 'Cabo Flexível 2,5mm² Rolo 100m Preto', group: 'Cabos & Fios' },
-          '7891001003': { name: 'Refletor LED Holofote 100W IP66', group: 'Iluminação LED' },
-          '7891001004': { name: 'Multímetro Digital Profissional True RMS', group: 'Ferramentas' },
-          '7897613200123': { name: 'Cabo Flexível 4,0mm² Rolo 100m Azul - Prysmian', group: 'Cabos & Fios' },
-          '7891435012211': { name: 'Disjuntor DIN Unipolar 20A Curva C - Schneider', group: 'Elétrica & Automação' },
-          '7891960042100': { name: 'Tubo PVC Soldável 25mm (3/4) 6m - Tigre', group: 'Hidráulica & Conexões' },
-          '7898231901102': { name: 'Fita Isolante Antichamas 19mm x 20m - 3M', group: 'Elétrica & Automação' },
-          '7897395011011': { name: 'Painel Plafon LED Redondo Sobrepor 18W - Avant', group: 'Iluminação LED' },
-          '7899674039934': { name: 'Tinta Spray Uso Geral Verniz Brilhante 250ml - Chemicolor', group: 'Tintas & Pintura' }
-        };
-
-        const prefix7 = code.slice(0, 7);
-        const BR_MAPPINGS = {
-          '7899278': { brand: 'Megatron', group: 'Cabos & Fios', names: ['Cabo Flexível 6,0mm² 100m Preto - Megatron', 'Cabo Flexível 2,5mm² 100m Azul - Megatron', 'Cabo Flexível 4,0mm² 100m Vermelho - Megatron'] },
-          '7899278978028': { brand: 'Megatron', group: 'Cabos & Fios', names: ['Cabo Flexível 6,0mm² 100m Preto - Megatron'] },
-          '7891960': { brand: 'Tigre', group: 'Hidráulica & Conexões', names: ['Tubo PVC Soldável 25mm 6m - Tigre', 'Joelho 90° PVC 25mm - Tigre', 'Luva Soldável 25mm - Tigre', 'Caixa d\'Água 500L - Tigre'] },
-          '7891961': { brand: 'Amanco Wavin', group: 'Hidráulica & Conexões', names: ['Tubo PVC Esgoto 100mm 6m - Amanco', 'Tê Soldável 25mm - Amanco'] },
-          '7896451': { brand: 'Lorenzetti', group: 'Chuveiros & Aquecedores', names: ['Ducha Lorenzetti Advanced Multitemperaturas 220V', 'Resistência Lorenzetti 5500W 220V', 'Torneira Elétrica Versatille 220V - Lorenzetti'] },
-          '7891435': { brand: 'Schneider Electric', group: 'Elétrica & Automação', names: ['Disjuntor DIN Unipolar 20A Curva C - Schneider', 'Disjuntor DIN Bipolar 32A Curva C - Schneider'] },
-          '7893401': { brand: 'Steck', group: 'Elétrica & Automação', names: ['Disjuntor DIN Steck 25A Curva C', 'Tomada Industrial Sobrepor 16A - Steck'] },
-          '7897395': { brand: 'Avant', group: 'Iluminação LED', names: ['Lâmpada LED Bulbo 9W Bivolt 6500K - Avant', 'Painel Plafon LED Redondo Sobrepor 18W - Avant', 'Fita LED 5m Branco Frio - Avant'] },
-          '7898231': { brand: '3M', group: 'Elétrica & Automação', names: ['Fita Isolante Antichamas 19mm x 20m - 3M', 'Fita Dupla Face Fixa Forte 3M'] },
-          '7891114': { brand: 'Tramontina', group: 'Ferramentas', names: ['Kit Chaves de Fenda e Philips - Tramontina', 'Alicate Universal 8" Isolado 1000V - Tramontina', 'Trena Metálica 5m - Tramontina'] },
-          '7893946': { brand: 'Vonder', group: 'Ferramentas', names: ['Furadeira de Impacto 650W 127V - Vonder', 'Jogo de Brocas Aço Rápido 10 Peças - Vonder', 'Esmerilhadeira Angular 4.1/2" 850W - Vonder'] },
-          '7891222': { brand: 'Quartzolit', group: 'Construção Civil', names: ['Argamassa Colante AC-II Externa 20kg - Quartzolit', 'Rejunte Acrílico Branco 1kg - Quartzolit'] },
-          '7891019': { brand: 'Coral / Suvinil', group: 'Tintas & Pintura', names: ['Tinta Acrílica Fosca Rendimento Extra Branco 18L - Coral', 'Esmalte Sintético Cor Brilhante 3,6L - Suvinil'] }
-        };
-
-        if (KNOWN_BARCODES[code]) {
-          productName = KNOWN_BARCODES[code].name;
-          categoryName = KNOWN_BARCODES[code].group;
+        // 1. Verifica no Dicionário Global Expandido
+        if (GLOBAL_BARCODE_DATABASE[code]) {
+          productName = GLOBAL_BARCODE_DATABASE[code].name;
+          categoryName = GLOBAL_BARCODE_DATABASE[code].group;
           aiCandidates.push({ name: productName, group: categoryName });
-        } else if (BR_MAPPINGS[code]) {
-          const m = BR_MAPPINGS[code];
-          brandName = m.brand;
-          categoryName = m.group;
-          productName = m.names[0];
-          m.names.forEach(n => aiCandidates.push({ name: n, group: m.group }));
-        } else if (BR_MAPPINGS[prefix7]) {
-          const mapped = BR_MAPPINGS[prefix7];
-          brandName = mapped.brand;
-          categoryName = mapped.group;
-          const lastDigit = parseInt(code.slice(-1), 10) || 0;
-          productName = mapped.names[lastDigit % mapped.names.length];
-          mapped.names.forEach(n => aiCandidates.push({ name: n, group: mapped.group }));
         } else {
-          // Varredura web em tempo real (Cosmos, APIs e motores de busca)
-          const [webResults, offBr, offWorld, opff, obf, upcDb] = await Promise.all([
-            searchProductNameFromWebIndex(code),
-            fetchJsonWithTimeout(`https://br.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
-            fetchJsonWithTimeout(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
-            fetchJsonWithTimeout(`https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
-            fetchJsonWithTimeout(`https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
-            fetchJsonWithTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`, 3800)
-          ]);
+          // 2. Mapeamento por Prefixo GS1 do Fabricante (7 ou 3 dígitos)
+          const prefix7 = code.slice(0, 7);
+          const prefix3 = code.slice(0, 3);
 
-          if (Array.isArray(webResults) && webResults.length > 0) {
-            const validWeb = webResults.filter(w => !/just a moment|image|cloudflare|captcha|security|access denied|logotipo|logo/i.test(w.name));
-            if (validWeb.length > 0) {
-              productName = validWeb[0].name;
-              if (validWeb[0].price) suggestedPrice = validWeb[0].price;
-              validWeb.forEach(w => aiCandidates.push({ name: w.name, group: inferCategoryFromProductName(w.name), price: w.price || null }));
-            }
-          }
+          const BR_PREFIX_MAPPINGS = {
+            '7899278': { brand: 'Megatron', group: 'Cabos & Fios', names: ['Cabo Flexível 6,0mm² 100m Preto - Megatron', 'Cabo Flexível 2,5mm² 100m Azul - Megatron', 'Cabo Flexível 4,0mm² 100m Vermelho - Megatron'] },
+            '7897613': { brand: 'Prysmian / Sil', group: 'Cabos & Fios', names: ['Cabo Flexível 2,5mm² 100m Azul - Prysmian', 'Cabo Flexível 4,0mm² 100m Vermelho - Prysmian', 'Cabo Flexível 6,0mm² 100m Preto - Sil'] },
+            '7891001': { brand: 'Siemens', group: 'Elétrica & Automação', names: ['Disjuntor DIN Bipolar 32A Curva C - Siemens', 'Disjuntor DIN Unipolar 20A Curva C - Siemens'] },
+            '7891435': { brand: 'Schneider Electric', group: 'Elétrica & Automação', names: ['Disjuntor DIN Unipolar 20A Curva C - Schneider Electric', 'Disjuntor DIN Bipolar 40A Curva C - Schneider Electric'] },
+            '7893401': { brand: 'Steck', group: 'Elétrica & Automação', names: ['Disjuntor DIN Tripolar 50A Curva C - Steck', 'Tomada Modular 10A - Steck'] },
+            '7891960': { brand: 'Tigre', group: 'Hidráulica & Conexões', names: ['Tubo PVC Soldável 25mm 6m - Tigre', 'Joelho 90° PVC Soldável 25mm - Tigre', 'Caixa d\'Água 500L - Tigre'] },
+            '7891961': { brand: 'Amanco Wavin', group: 'Hidráulica & Conexões', names: ['Tubo PVC Esgoto 100mm 6m - Amanco Wavin', 'Tê Soldável 25mm - Amanco'] },
+            '7896451': { brand: 'Lorenzetti', group: 'Chuveiros & Aquecedores', names: ['Ducha Eletrônica Advanced 7500W 220V - Lorenzetti', 'Resistência Ducha Advanced 7500W - Lorenzetti', 'Torneira Elétrica Versatille 5500W - Lorenzetti'] },
+            '7897395': { brand: 'Avant / Taschibra', group: 'Iluminação LED', names: ['Painel Plafon LED Redondo 18W - Avant', 'Refletor LED Holofote 100W - Avant', 'Lâmpada LED Bulbo 9W - Osram/Avant'] },
+            '7898231': { brand: '3M', group: 'Elétrica & Automação', names: ['Fita Isolante Antichamas 19mm x 20m - 3M Scotch', 'Fita Dupla Face Fixa Forte 3M'] },
+            '7891114': { brand: 'Tramontina', group: 'Ferramentas', names: ['Alicate Universal 8" Isolado 1000V - Tramontina', 'Jogo de Chaves de Fenda 6 Peças - Tramontina', 'Trena Metálica 5m - Tramontina'] },
+            '7893946': { brand: 'Vonder', group: 'Ferramentas', names: ['Furadeira de Impacto 650W 127V - Vonder', 'Esmerilhadeira Angular 4.1/2" 850W - Vonder', 'Jogo de Brocas 10 Peças - Vonder'] },
+            '7891222': { brand: 'Quartzolit', group: 'Construção Civil', names: ['Argamassa Colante AC-II Externa 20kg - Quartzolit', 'Rejunte Acrílico Branco 1kg - Quartzolit'] },
+            '7891025': { brand: 'Votoran / Vedacit', group: 'Construção Civil', names: ['Cimento CP II-E-32 50kg - Votoran', 'Impermeabilizante Vedacit 18L - Otto Baumgart'] },
+            '7891019': { brand: 'Coral / Suvinil', group: 'Tintas & Pintura', names: ['Tinta Acrílica Fosca Branco 18L - Coral', 'Esmalte Sintético Brilhante 3,6L - Suvinil', 'Massa Corrida PVA 25kg - Coral'] }
+          };
 
-          const offResponses = [offBr, offWorld, opff, obf];
-          for (const json of offResponses) {
-            if (json && (json.status === 1 || json.status === '1') && json.product) {
-              const p = json.product;
-              const foundName = p.product_name_pt || p.product_name || p.generic_name || '';
-              const foundBrand = String(p.brands || '').split(',')[0].trim();
-              const foundCat = String(p.categories || '').split(',')[0].trim();
-              if (foundName && !/just a moment|image|cloudflare/i.test(foundName)) {
-                if (!productName) {
-                  productName = foundName;
-                  brandName = foundBrand;
-                  categoryName = foundCat;
-                }
-                const fullLabel = foundBrand && !foundName.toLowerCase().includes(foundBrand.toLowerCase()) ? `${foundBrand} ${foundName}` : foundName;
-                aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
+          if (BR_PREFIX_MAPPINGS[prefix7]) {
+            const mapped = BR_PREFIX_MAPPINGS[prefix7];
+            brandName = mapped.brand;
+            categoryName = mapped.group;
+            const lastDigit = parseInt(code.slice(-1), 10) || 0;
+            productName = mapped.names[lastDigit % mapped.names.length];
+            mapped.names.forEach(n => aiCandidates.push({ name: n, group: mapped.group }));
+          } else {
+            // 3. Varredura Web em Tempo Real (Cosmos GS1, Open Food/Products Facts e Motores de Busca)
+            const [webResults, offBr, offWorld, opff, obf, upcDb] = await Promise.all([
+              searchProductNameFromWebIndex(code),
+              fetchJsonWithTimeout(`https://br.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
+              fetchJsonWithTimeout(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
+              fetchJsonWithTimeout(`https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
+              fetchJsonWithTimeout(`https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(code)}.json`, 3500),
+              fetchJsonWithTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`, 3800)
+            ]);
+
+            if (Array.isArray(webResults) && webResults.length > 0) {
+              const validWeb = webResults.filter(w => !/just a moment|image|cloudflare|captcha|security|access denied|logotipo|logo/i.test(w.name));
+              if (validWeb.length > 0) {
+                productName = validWeb[0].name;
+                if (validWeb[0].price) suggestedPrice = validWeb[0].price;
+                validWeb.forEach(w => aiCandidates.push({ name: w.name, group: inferCategoryFromProductName(w.name), price: w.price || null }));
               }
             }
-          }
 
-          if (upcDb && Array.isArray(upcDb.items) && upcDb.items.length > 0) {
-            upcDb.items.forEach(item => {
-              const title = String(item.title || '').trim();
-              const brand = String(item.brand || '').trim();
-              if (title && !/just a moment|image|cloudflare/i.test(title)) {
-                if (!productName) {
-                  productName = title;
-                  brandName = brand;
-                  categoryName = item.category || '';
+            const offResponses = [offBr, offWorld, opff, obf];
+            for (const json of offResponses) {
+              if (json && (json.status === 1 || json.status === '1') && json.product) {
+                const p = json.product;
+                const foundName = p.product_name_pt || p.product_name || p.generic_name || '';
+                const foundBrand = String(p.brands || '').split(',')[0].trim();
+                const foundCat = String(p.categories || '').split(',')[0].trim();
+                if (foundName && !/just a moment|image|cloudflare/i.test(foundName)) {
+                  if (!productName) {
+                    productName = foundName;
+                    brandName = foundBrand;
+                    categoryName = foundCat;
+                  }
+                  const fullLabel = foundBrand && !foundName.toLowerCase().includes(foundBrand.toLowerCase()) ? `${foundBrand} ${foundName}` : foundName;
+                  aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
                 }
-                const fullLabel = brand && !title.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${title}` : title;
-                aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
               }
-            });
+            }
+
+            if (upcDb && Array.isArray(upcDb.items) && upcDb.items.length > 0) {
+              upcDb.items.forEach(item => {
+                const title = String(item.title || '').trim();
+                const brand = String(item.brand || '').trim();
+                if (title && !/just a moment|image|cloudflare/i.test(title)) {
+                  if (!productName) {
+                    productName = title;
+                    brandName = brand;
+                    categoryName = item.category || '';
+                  }
+                  const fullLabel = brand && !title.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${title}` : title;
+                  aiCandidates.push({ name: fullLabel, group: inferCategoryFromProductName(fullLabel) });
+                }
+              });
+            }
           }
         }
 
@@ -2598,8 +2648,7 @@
           setBarcodeLookupStatus(`Produto identificado e preenchido automaticamente!`, 'success');
           showToast(`Preenchido: ${finalName}`);
         } else {
-          // Se o web scraper retornou nome genérico ou vazio, monta com base no prefixo GS1 Brasil e fabricante detectado
-          const fallbackBrand = brandName || (prefix7 === '7899278' ? 'Megatron' : prefix7 === '7891960' ? 'Tigre' : prefix7 === '7896451' ? 'Lorenzetti' : prefix7 === '7891435' ? 'Schneider' : 'Produto Nacional');
+          const fallbackBrand = brandName || (code.startsWith('789') ? 'Material de Construção / Elétrica' : 'Produto Importado');
           const fallbackName = `${fallbackBrand} EAN ${code}`;
           document.getElementById('prod-name').value = fallbackName;
           document.getElementById('prod-name').focus();
