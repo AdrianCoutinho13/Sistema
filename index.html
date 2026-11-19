@@ -2977,7 +2977,7 @@
         box.classList.remove('hidden');
       }
 
-      function openSubscriptionBlockedModal(storeName) {
+      window.openSubscriptionBlockedModal = function openSubscriptionBlockedModal(storeName) {
         const modal = document.getElementById('subscription-blocked-modal');
         const label = document.getElementById('blocked-store-name-label');
         const waLink = document.getElementById('blocked-whatsapp-link');
@@ -2987,11 +2987,11 @@
           waLink.href = `https://wa.me/5519987819352?text=${encodeURIComponent(text)}`;
         }
         if (modal) modal.classList.remove('hidden');
-      }
+      };
 
-      function closeSubscriptionBlockedModal() {
+      window.closeSubscriptionBlockedModal = function closeSubscriptionBlockedModal() {
         document.getElementById('subscription-blocked-modal')?.classList.add('hidden');
-      }
+      };
 
       function logoutSession() {
         closeProfileMenu();
@@ -7474,7 +7474,9 @@ GRANT EXECUTE ON FUNCTION public.erp_update_saas_tenant_status(text, timestamptz
         renderSalesReport, printSalesReportPDF, openEditSaleModal, renderEditSaleItemsTable, adjustEditedSaleItemQty, setEditedSaleItemQty, addExtraItemToEditedSale, saveEditedSaleRecord, deleteSaleRecord,
         toggleAssistenteOnlineMode, clearAssistenteChat, askAssistenteQuick, handleAssistenteSubmit, applyAIGeneratedQuote,
         toggleWhatsAppWidget, switchWhatsAppWidgetTab, onSelectWhatsAppCustomer, fillWhatsAppPDVCartMessage, applyWhatsAppTemplate, openDockedWhatsAppWindow, sendWhatsAppQuickMessage,
-        closeSubscriptionBlockedModal, closeModal, appState
+        openSubscriptionBlockedModal: window.openSubscriptionBlockedModal,
+        closeSubscriptionBlockedModal: window.closeSubscriptionBlockedModal,
+        closeModal, appState
       });
 
       /* ==================== INICIALIZAÇÃO SEGURA ==================== */
