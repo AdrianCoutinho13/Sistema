@@ -561,7 +561,7 @@
         <div id="login-brand-icon" class="keep-white w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-white shadow-lg" style="background: var(--accent-primary);">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
-        <h2 id="login-store-title" class="text-xl font-extrabold text-white tracking-tight">ARC Tech • ERP Pro</h2>
+        <h2 id="login-store-title" data-fixed-system-name="true" class="text-xl font-extrabold text-white tracking-tight">ARC Tech ERP Pro</h2>
         <p class="text-xs text-slate-400">Autenticação via Hash Bcrypt + Row Level Security (RLS)</p>
         <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-[11px] font-medium text-emerald-400">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -6536,7 +6536,7 @@
         if (subEl) subEl.textContent = `${name} • Gestão Comercial, Estoque & Caixa`;
 
         const loginTitle = document.getElementById('login-store-title');
-        if (loginTitle) loginTitle.textContent = `${name} • ERP Pro`;
+        if (loginTitle) loginTitle.textContent = 'ARC Tech ERP Pro';
 
         const pubName = document.getElementById('pub-cat-store-name');
         if (pubName) pubName.textContent = name;
