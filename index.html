@@ -6245,7 +6245,45 @@
           p_notes: cnotes,
           p_items: payloadItems
         });
-        errResult = e2;
+        if (e2) {
+          const fullItems = cart.map(i => ({ id: i.id, name: i.name, price: Number(i.price || 0), qty: Number(i.qty || 1) }));
+          const orderTotal = fullItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+          const { error: e3 } = await sb.from('erp_public_orders').insert({
+            id: orderId,
+            store_id: STORE_ID,
+            customer_name: cname,
+            customer_phone: cphone,
+            payment_method: cpay,
+            notes: cnotes,
+            status: 'Aguardando Separação',
+            items: fullItems,
+            total: orderTotal,
+            created_at: new Date().toISOString()
+          });
+          if (e3) {
+            const { data: stateRow, error: e4Get } = await sb.from('erp_store_state').select('payload').eq('id', STORE_ID).maybeSingle();
+            if (!e4Get && stateRow && stateRow.payload) {
+              const nextPayload = { ...stateRow.payload };
+              const existingOrders = Array.isArray(nextPayload.catalogOrders) ? nextPayload.catalogOrders : [];
+              existingOrders.push({
+                id: orderId,
+                date: new Date().toLocaleString('pt-BR'),
+                customer: cname,
+                phone: cphone,
+                payment: cpay,
+                notes: cnotes,
+                status: 'Aguardando Separação',
+                items: fullItems,
+                total: orderTotal
+              });
+              nextPayload.catalogOrders = existingOrders;
+              const { error: e4Up } = await sb.from('erp_store_state').update({ payload: nextPayload, updated_at: new Date().toISOString() }).eq('id', STORE_ID);
+              errResult = e4Up;
+            } else {
+              errResult = e3;
+            }
+          }
+        }
       }
 
       btn.disabled = false; btn.textContent = 'Enviar Pedido para Separação';
@@ -6529,6 +6567,7 @@
         const orderId = 'PED-' + Math.floor(10000 + Math.random() * 90000);
         const total = publicCatalogCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
         const storeId = getActiveStoreId();
+        const fullOrderItems = JSON.parse(JSON.stringify(publicCatalogCart));
 
         try {
           if (supabaseClient) {
@@ -6552,7 +6591,54 @@
                 p_notes: notes,
                 p_items: payloadItems
               });
-              if (error) throw error;
+              if (error) {
+                const { error: insertErr } = await supabaseClient
+                  .from('erp_public_orders')
+                  .insert({
+                    id: orderId,
+                    store_id: storeId,
+                    customer_name: customerName,
+                    customer_phone: customerPhone,
+                    payment_method: payment,
+                    notes: notes,
+                    status: 'Aguardando Separação',
+                    items: fullOrderItems,
+                    total: total,
+                    created_at: new Date().toISOString()
+                  });
+
+                if (insertErr) {
+                  const { data: stateRow, error: fetchErr } = await supabaseClient
+                    .from('erp_store_state')
+                    .select('payload')
+                    .eq('id', storeId)
+                    .maybeSingle();
+
+                  if (!fetchErr && stateRow && stateRow.payload) {
+                    const nextPayload = { ...stateRow.payload };
+                    const ordersList = Array.isArray(nextPayload.catalogOrders) ? nextPayload.catalogOrders : [];
+                    ordersList.push({
+                      id: orderId,
+                      date: new Date().toLocaleString('pt-BR'),
+                      customer: customerName,
+                      phone: customerPhone,
+                      payment,
+                      notes,
+                      status: 'Aguardando Separação',
+                      items: fullOrderItems,
+                      total
+                    });
+                    nextPayload.catalogOrders = ordersList;
+                    const { error: updateErr } = await supabaseClient
+                      .from('erp_store_state')
+                      .update({ payload: nextPayload, updated_at: new Date().toISOString() })
+                      .eq('id', storeId);
+                    if (updateErr) throw updateErr;
+                  } else {
+                    throw insertErr;
+                  }
+                }
+              }
             }
           } else {
             appState.catalogOrders.push({
@@ -6563,7 +6649,7 @@
               payment,
               notes,
               status: 'Aguardando Separação',
-              items: JSON.parse(JSON.stringify(publicCatalogCart)),
+              items: fullOrderItems,
               total
             });
             localStorage.setItem(getScopedStorageKey(), JSON.stringify(appState));
