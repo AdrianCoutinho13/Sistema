@@ -2334,6 +2334,7 @@
       let loginAttempts = 0;
       let loginLockedUntil = 0;
       let securityViolated = false;
+      let cloudSyncHydrated = false;
 
       function getUrlStoreIdParam() {
         try {
@@ -2801,6 +2802,7 @@
       async function pushStateToSupabase(notify = false) {
         if (!supabaseClient || securityViolated) return;
         const storeId = getActiveStoreId();
+        if (!cloudSyncHydrated && !notify) return;
         try {
           const { error } = await supabaseClient
             .from('erp_store_state')
@@ -3077,8 +3079,16 @@
         const storeId = getActiveStoreId();
 
         try {
-          const { data, error } = await supabaseClient.from('erp_store_state').select('payload').eq('id', storeId).maybeSingle();
+          let { data, error } = await supabaseClient.from('erp_store_state').select('payload').eq('id', storeId).maybeSingle();
           if (error) throw error;
+
+          if ((!data || !data.payload) && (storeId === 'for_comerce' || storeId === 'main_store')) {
+            const legacyId = storeId === 'for_comerce' ? 'main_store' : 'for_comerce';
+            const legacyRes = await supabaseClient.from('erp_store_state').select('payload').eq('id', legacyId).maybeSingle();
+            if (!legacyRes.error && legacyRes.data && legacyRes.data.payload) {
+              data = legacyRes.data;
+            }
+          }
 
           let isolatedPublicOrders = [];
           try {
@@ -3150,6 +3160,7 @@
               }
             }
           }
+          cloudSyncHydrated = true;
           updateDbStatusUI(true);
           if (notify) showToast(`Dados da loja (${storeId}) sincronizados!`);
         } catch (err) {
@@ -3261,6 +3272,7 @@
       async function switchSuperAdminActiveStore(newStoreId, goDashboard = false) {
         if (!canManageSaasPlatform() || !newStoreId) return;
         activeStoreId = newStoreId;
+        cloudSyncHydrated = false;
         knownCatalogOrderIds.clear();
 
         const found = (saasTenantsCache || []).find(t => t.store_id === newStoreId);
