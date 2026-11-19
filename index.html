@@ -3403,14 +3403,14 @@
         try {
           const loc = window.location;
           if (loc.protocol === 'http:' || loc.protocol === 'https:') {
-            const cleanPath = (loc.pathname || '/').replace(/\/[^/]*\.html$/i, '/');
-            baseHref = `${loc.origin}${cleanPath.endsWith('/') ? cleanPath : cleanPath + '/'}catalogo.html`;
+            const cleanPath = (loc.pathname || '/').replace(/\/index\.html$/i, '/');
+            baseHref = `${loc.origin}${cleanPath.endsWith('/') ? cleanPath : cleanPath}`;
           }
         } catch (e) {}
         if (!baseHref) {
-          baseHref = 'https://app.netlify.com/drop/catalogo.html';
+          baseHref = 'https://sistemaloja-six.vercel.app/';
         }
-        return `${baseHref}?loja=${encodeURIComponent(storeId)}`;
+        return `${baseHref}?catalogo=1&loja=${encodeURIComponent(storeId)}#catalogo`;
       }
 
       function generateStandaloneCatalogHtmlContent() {
