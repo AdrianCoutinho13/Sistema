@@ -2255,7 +2255,7 @@
           const hashStr = String(window.location.hash || '');
           const combined = searchStr + (hashStr.includes('?') ? '&' + hashStr.split('?')[1] : '') + (hashStr.includes('#') ? '&' + hashStr.replace(/^#+/, '') : '');
           const params = new URLSearchParams(combined.replace(/^\?/, ''));
-          const s = params.get('loja') || params.get('store') || '';
+          const s = params.get('loja') || params.get('store') || params.get('tenant') || '';
           if (s && s.trim()) return s.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
         } catch (e) {}
         return '';
@@ -2263,9 +2263,9 @@
 
       function getActiveStoreId() {
         if (isSuperAdmin() && activeStoreId) return activeStoreId;
-        if (currentUser && currentUser.storeId) return currentUser.storeId;
         const urlStore = getUrlStoreIdParam();
         if (urlStore) return urlStore;
+        if (currentUser && currentUser.storeId && currentUser.storeId !== 'admin_platform') return currentUser.storeId;
         return activeStoreId || 'main_store';
       }
 
@@ -2808,7 +2808,7 @@
               appState.store = { ...appState.store, ...saasData.store };
               try { localStorage.setItem(getScopedBrandKey(), JSON.stringify(appState.store)); } catch (e) {}
             }
-            if (Array.isArray(saasData.products)) {
+            if (Array.isArray(saasData.products) && saasData.products.length > 0) {
               appState.products = saasData.products;
             }
             loadedFromServer = true;
@@ -2819,19 +2819,19 @@
           try {
             const { data, error } = await supabaseClient.rpc('get_public_catalog_snapshot');
             if (!error && data) {
-              if (data.store) {
+              if (data.store && storeId === 'main_store') {
                 appState.store = { ...appState.store, ...data.store };
                 try { localStorage.setItem(getScopedBrandKey(), JSON.stringify(appState.store)); } catch (e) {}
               }
-              if (Array.isArray(data.products)) {
+              if (Array.isArray(data.products) && data.products.length > 0 && storeId === 'main_store') {
                 appState.products = data.products;
               }
-              loadedFromServer = true;
+              if (storeId === 'main_store') loadedFromServer = true;
             }
           } catch (e) {}
         }
 
-        // Fallback direto em erp_store_state caso a RPC não exista no projeto Supabase
+        // Busca direta no estado da loja selecionada na nuvem (erp_store_state)
         if (!loadedFromServer) {
           try {
             let { data: rowData } = await supabaseClient
@@ -2841,6 +2841,14 @@
               .maybeSingle();
 
             if (!rowData && storeId !== 'main_store') {
+              const localPayloadRaw = localStorage.getItem(`${STORAGE_KEY_BASE}_${storeId}`);
+              if (localPayloadRaw) {
+                const localPayload = JSON.parse(localPayloadRaw);
+                if (localPayload) rowData = { payload: localPayload };
+              }
+            }
+
+            if (!rowData && storeId === 'main_store') {
               const mainRes = await supabaseClient
                 .from('erp_store_state')
                 .select('payload')
@@ -2866,6 +2874,8 @@
           applyStoreIdentity();
           if (isPublicCatalogViewActive) renderPublicCatalogView();
           updateDbStatusUI(true);
+        } else if (isPublicCatalogViewActive) {
+          renderPublicCatalogView();
         }
       }
 
@@ -5105,10 +5115,15 @@
       }
 
       function openPublicCatalogFromLogin() {
+        const urlStore = getUrlStoreIdParam();
+        if (urlStore) activeStoreId = urlStore;
+        loadLocalState();
         activatePublicCatalogScreen(false);
       }
 
       function previewPublicCatalogMode() {
+        activeStoreId = getActiveStoreId();
+        loadLocalState();
         activatePublicCatalogScreen(true);
       }
 
@@ -5457,6 +5472,7 @@
 
       /* ==================== GESTÃO INTERNA DOS PEDIDOS DO CATÁLOGO ==================== */
       function renderCatalogAdminView() {
+        activeStoreId = getActiveStoreId();
         const urlInp = document.getElementById('catalog-share-url-input');
         if (urlInp) urlInp.value = getPublicCatalogUrl();
         updateCatalogUrlWarningBanner();
