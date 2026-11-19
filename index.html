@@ -2283,6 +2283,34 @@
         return `${BRAND_CACHE_KEY_BASE}_${getActiveStoreId()}`;
       }
 
+      function getAnyCachedProductsForStore(storeId) {
+        try {
+          const ids = [storeId, 'for_comerce', 'main_store'].filter(Boolean);
+          for (const id of ids) {
+            const raw = localStorage.getItem(`${STORAGE_KEY_BASE}_${id}`);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed.products) && parsed.products.length > 0) {
+                return parsed.products;
+              }
+            }
+          }
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith(STORAGE_KEY_BASE + '_')) {
+              const raw = localStorage.getItem(k);
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed.products) && parsed.products.length > 0) {
+                  return parsed.products;
+                }
+              }
+            }
+          }
+        } catch (e) {}
+        return null;
+      }
+
       function verifyDomainAndEnvironment() {
         const host = String(window.location.hostname || '').toLowerCase();
         const protocol = String(window.location.protocol || '').toLowerCase();
@@ -2561,12 +2589,13 @@
             };
           } else {
             // Fallback para estado base da loja caso o cliente abra o link em outro navegador/contexto
+            const fallbackProducts = getAnyCachedProductsForStore(getActiveStoreId());
+            if (fallbackProducts && fallbackProducts.length > 0) {
+              appState.products = fallbackProducts;
+            }
             const fallbackRaw = localStorage.getItem(`${STORAGE_KEY_BASE}_main_store`);
             if (fallbackRaw) {
               const fbParsed = JSON.parse(fallbackRaw);
-              if (Array.isArray(fbParsed.products) && fbParsed.products.length > 0) {
-                appState.products = fbParsed.products;
-              }
               if (fbParsed.store && fbParsed.store.name) {
                 appState.store = { ...appState.store, ...fbParsed.store };
               }
@@ -2795,7 +2824,10 @@
 
       /* ==================== SINCRONIZAÇÃO SEGURA MULTI-LOJA ==================== */
       async function pullPublicCatalogSnapshotFromSupabase() {
-        if (!supabaseClient) return;
+        if (!supabaseClient) {
+          renderPublicCatalogView();
+          return;
+        }
         const storeId = getActiveStoreId();
         let loadedFromServer = false;
 
@@ -2804,14 +2836,14 @@
             p_store_id: storeId
           });
           if (!saasErr && saasData) {
-            if (saasData.store) {
+            if (saasData.store && saasData.store.name) {
               appState.store = { ...appState.store, ...saasData.store };
               try { localStorage.setItem(getScopedBrandKey(), JSON.stringify(appState.store)); } catch (e) {}
             }
             if (Array.isArray(saasData.products) && saasData.products.length > 0) {
               appState.products = saasData.products;
+              loadedFromServer = true;
             }
-            loadedFromServer = true;
           }
         } catch (e) {}
 
@@ -2819,14 +2851,14 @@
           try {
             const { data, error } = await supabaseClient.rpc('get_public_catalog_snapshot');
             if (!error && data) {
-              if (data.store && storeId === 'main_store') {
+              if (data.store && data.store.name) {
                 appState.store = { ...appState.store, ...data.store };
                 try { localStorage.setItem(getScopedBrandKey(), JSON.stringify(appState.store)); } catch (e) {}
               }
-              if (Array.isArray(data.products) && data.products.length > 0 && storeId === 'main_store') {
+              if (Array.isArray(data.products) && data.products.length > 0) {
                 appState.products = data.products;
+                loadedFromServer = true;
               }
-              if (storeId === 'main_store') loadedFromServer = true;
             }
           } catch (e) {}
         }
@@ -2834,49 +2866,40 @@
         // Busca direta no estado da loja selecionada na nuvem (erp_store_state)
         if (!loadedFromServer) {
           try {
-            let { data: rowData } = await supabaseClient
-              .from('erp_store_state')
-              .select('payload')
-              .eq('id', storeId)
-              .maybeSingle();
-
-            if (!rowData && storeId !== 'main_store') {
-              const localPayloadRaw = localStorage.getItem(`${STORAGE_KEY_BASE}_${storeId}`);
-              if (localPayloadRaw) {
-                const localPayload = JSON.parse(localPayloadRaw);
-                if (localPayload) rowData = { payload: localPayload };
-              }
-            }
-
-            if (!rowData && storeId === 'main_store') {
-              const mainRes = await supabaseClient
+            const candidateIds = [storeId, 'for_comerce', 'main_store'].filter((v, i, a) => v && a.indexOf(v) === i);
+            for (const candId of candidateIds) {
+              const { data: rowData } = await supabaseClient
                 .from('erp_store_state')
-                .select('payload')
-                .eq('id', 'main_store')
+                .select('id, payload')
+                .eq('id', candId)
                 .maybeSingle();
-              rowData = mainRes?.data || null;
-            }
 
-            if (rowData && rowData.payload) {
-              if (rowData.payload.store) {
-                appState.store = { ...appState.store, ...rowData.payload.store };
+              if (rowData && rowData.payload) {
+                if (rowData.payload.store && rowData.payload.store.name) {
+                  appState.store = { ...appState.store, ...rowData.payload.store };
+                }
+                if (Array.isArray(rowData.payload.products) && rowData.payload.products.length > 0) {
+                  appState.products = rowData.payload.products;
+                  loadedFromServer = true;
+                  break;
+                }
               }
-              if (Array.isArray(rowData.payload.products)) {
-                appState.products = rowData.payload.products;
-              }
-              loadedFromServer = true;
             }
           } catch (e) {}
         }
 
-        if (loadedFromServer) {
-          try { localStorage.setItem(getScopedStorageKey(), JSON.stringify(appState)); } catch (e) {}
-          applyStoreIdentity();
-          if (isPublicCatalogViewActive) renderPublicCatalogView();
-          updateDbStatusUI(true);
-        } else if (isPublicCatalogViewActive) {
-          renderPublicCatalogView();
+        // Se ainda não veio do servidor (por bloqueio RLS em ambiente anônimo), usa qualquer cache local disponível
+        if (!loadedFromServer && (!Array.isArray(appState.products) || appState.products.length === 0)) {
+          const cachedProds = getAnyCachedProductsForStore(storeId);
+          if (cachedProds && cachedProds.length > 0) {
+            appState.products = cachedProds;
+          }
         }
+
+        try { localStorage.setItem(getScopedStorageKey(), JSON.stringify(appState)); } catch (e) {}
+        applyStoreIdentity();
+        if (isPublicCatalogViewActive) renderPublicCatalogView();
+        updateDbStatusUI(loadedFromServer);
       }
 
       async function pullStateFromSupabase(notify = false) {
@@ -5014,14 +5037,13 @@
         try {
           const storeId = getActiveStoreId();
           const loc = window.location;
-          const proto = String(loc.protocol || '').toLowerCase();
-          if (proto === 'http:' || proto === 'https:') {
-            const baseHref = String(loc.href || '').split('?')[0].split('#')[0];
+          const baseHref = String(loc.href || '').split('?')[0].split('#')[0];
+          if (baseHref && !baseHref.startsWith('blob:') && !baseHref.startsWith('data:')) {
             return `${baseHref}?catalogo=1&loja=${encodeURIComponent(storeId)}#catalogo`;
           }
           return `https://catalogo-online.seudominio.com/?catalogo=1&loja=${encodeURIComponent(storeId)}#catalogo`;
         } catch (e) {
-          return 'https://catalogo-online.seudominio.com/?catalogo=1#catalogo';
+          return `https://catalogo-online.seudominio.com/?catalogo=1&loja=${encodeURIComponent(getActiveStoreId())}#catalogo`;
         }
       }
 
@@ -5083,13 +5105,14 @@
           const hrefLower = String(window.location.href || '').toLowerCase();
           const searchStr = String(window.location.search || '');
           const hashStr = String(window.location.hash || '');
+          const combinedLower = `${searchStr} ${hashStr} ${hrefLower}`.toLowerCase();
           const params = new URLSearchParams(searchStr);
           if (
             params.get('catalogo') === '1' ||
             params.get('public_catalog') === '1' ||
-            hashStr.includes('catalogo') ||
-            hrefLower.includes('catalogo=1') ||
-            hrefLower.includes('#catalogo')
+            combinedLower.includes('catalogo=1') ||
+            combinedLower.includes('#catalogo') ||
+            combinedLower.includes('catalogo')
           ) {
             return true;
           }
@@ -5171,7 +5194,9 @@
 
         const q = (document.getElementById('pub-cat-search')?.value || '').toLowerCase().trim();
         const grp = document.getElementById('pub-cat-group-filter')?.value || 'all';
-        const available = (appState.products || []).filter(p => Number(p.stock || 0) > 0);
+        const allProducts = Array.isArray(appState.products) ? appState.products : [];
+        const withStock = allProducts.filter(p => Number(p.stock ?? 1) > 0);
+        const available = withStock.length > 0 ? withStock : allProducts;
         const filtered = available.filter(p => {
           const matchesGroup = grp === 'all' || (p.group || 'Geral') === grp;
           const matchesQuery = !q ||
@@ -5181,10 +5206,14 @@
           return matchesGroup && matchesQuery;
         });
 
-        if (label) label.textContent = `${filtered.length} produto(s) disponível(is) para pedido`;
+        if (label) {
+          label.textContent = withStock.length > 0
+            ? `${filtered.length} produto(s) disponível(is) para pedido`
+            : `${filtered.length} produto(s) no catálogo da loja`;
+        }
 
         if (filtered.length === 0) {
-          grid.innerHTML = `<div class="col-span-full erp-card p-8 text-center text-xs text-slate-400">Nenhum produto encontrado para este filtro.</div>`;
+          grid.innerHTML = `<div class="col-span-full erp-card p-8 text-center text-xs text-slate-400">Nenhum produto cadastrado na loja ainda. Cadastre itens em <strong>Almoxarifado & Estoque</strong> e clique em <strong>Enviar Dados para Nuvem</strong>.</div>`;
           return;
         }
 
