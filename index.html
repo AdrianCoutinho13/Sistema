@@ -2251,8 +2251,11 @@
 
       function getUrlStoreIdParam() {
         try {
-          const params = new URLSearchParams(window.location.search || '');
-          const s = params.get('loja') || params.get('store');
+          const searchStr = String(window.location.search || '');
+          const hashStr = String(window.location.hash || '');
+          const combined = searchStr + (hashStr.includes('?') ? '&' + hashStr.split('?')[1] : '') + (hashStr.includes('#') ? '&' + hashStr.replace(/^#+/, '') : '');
+          const params = new URLSearchParams(combined.replace(/^\?/, ''));
+          const s = params.get('loja') || params.get('store') || '';
           if (s && s.trim()) return s.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
         } catch (e) {}
         return '';
@@ -2556,6 +2559,18 @@
               costs: Array.isArray(parsed.costs) ? parsed.costs : [],
               entities: Array.isArray(parsed.entities) && parsed.entities.length > 0 ? parsed.entities : appState.entities
             };
+          } else {
+            // Fallback para estado base da loja caso o cliente abra o link em outro navegador/contexto
+            const fallbackRaw = localStorage.getItem(`${STORAGE_KEY_BASE}_main_store`);
+            if (fallbackRaw) {
+              const fbParsed = JSON.parse(fallbackRaw);
+              if (Array.isArray(fbParsed.products) && fbParsed.products.length > 0) {
+                appState.products = fbParsed.products;
+              }
+              if (fbParsed.store && fbParsed.store.name) {
+                appState.store = { ...appState.store, ...fbParsed.store };
+              }
+            }
           }
         } catch (e) {}
       }
@@ -2782,6 +2797,8 @@
       async function pullPublicCatalogSnapshotFromSupabase() {
         if (!supabaseClient) return;
         const storeId = getActiveStoreId();
+        let loadedFromServer = false;
+
         try {
           const { data: saasData, error: saasErr } = await supabaseClient.rpc('get_public_catalog_snapshot_saas', {
             p_store_id: storeId
@@ -2794,29 +2811,62 @@
             if (Array.isArray(saasData.products)) {
               appState.products = saasData.products;
             }
-            localStorage.setItem(getScopedStorageKey(), JSON.stringify(appState));
-            applyStoreIdentity();
-            if (isPublicCatalogViewActive) renderPublicCatalogView();
-            updateDbStatusUI(true);
-            return;
-          }
-
-          const { data, error } = await supabaseClient.rpc('get_public_catalog_snapshot');
-          if (!error && data) {
-            if (data.store) {
-              appState.store = { ...appState.store, ...data.store };
-              try { localStorage.setItem(getScopedBrandKey(), JSON.stringify(appState.store)); } catch (e) {}
-            }
-            if (Array.isArray(data.products)) {
-              appState.products = data.products;
-            }
-            localStorage.setItem(getScopedStorageKey(), JSON.stringify(appState));
-            applyStoreIdentity();
-            if (isPublicCatalogViewActive) renderPublicCatalogView();
-            updateDbStatusUI(true);
-            return;
+            loadedFromServer = true;
           }
         } catch (e) {}
+
+        if (!loadedFromServer) {
+          try {
+            const { data, error } = await supabaseClient.rpc('get_public_catalog_snapshot');
+            if (!error && data) {
+              if (data.store) {
+                appState.store = { ...appState.store, ...data.store };
+                try { localStorage.setItem(getScopedBrandKey(), JSON.stringify(appState.store)); } catch (e) {}
+              }
+              if (Array.isArray(data.products)) {
+                appState.products = data.products;
+              }
+              loadedFromServer = true;
+            }
+          } catch (e) {}
+        }
+
+        // Fallback direto em erp_store_state caso a RPC não exista no projeto Supabase
+        if (!loadedFromServer) {
+          try {
+            let { data: rowData } = await supabaseClient
+              .from('erp_store_state')
+              .select('payload')
+              .eq('id', storeId)
+              .maybeSingle();
+
+            if (!rowData && storeId !== 'main_store') {
+              const mainRes = await supabaseClient
+                .from('erp_store_state')
+                .select('payload')
+                .eq('id', 'main_store')
+                .maybeSingle();
+              rowData = mainRes?.data || null;
+            }
+
+            if (rowData && rowData.payload) {
+              if (rowData.payload.store) {
+                appState.store = { ...appState.store, ...rowData.payload.store };
+              }
+              if (Array.isArray(rowData.payload.products)) {
+                appState.products = rowData.payload.products;
+              }
+              loadedFromServer = true;
+            }
+          } catch (e) {}
+        }
+
+        if (loadedFromServer) {
+          try { localStorage.setItem(getScopedStorageKey(), JSON.stringify(appState)); } catch (e) {}
+          applyStoreIdentity();
+          if (isPublicCatalogViewActive) renderPublicCatalogView();
+          updateDbStatusUI(true);
+        }
       }
 
       async function pullStateFromSupabase(notify = false) {
@@ -5020,9 +5070,17 @@
 
       function shouldOpenPublicCatalogFromUrl() {
         try {
-          const search = new URLSearchParams(window.location.search || '');
+          const hrefLower = String(window.location.href || '').toLowerCase();
+          const searchStr = String(window.location.search || '');
           const hashStr = String(window.location.hash || '');
-          if (search.get('catalogo') === '1' || search.get('public_catalog') === '1' || hashStr.includes('catalogo')) {
+          const params = new URLSearchParams(searchStr);
+          if (
+            params.get('catalogo') === '1' ||
+            params.get('public_catalog') === '1' ||
+            hashStr.includes('catalogo') ||
+            hrefLower.includes('catalogo=1') ||
+            hrefLower.includes('#catalogo')
+          ) {
             return true;
           }
         } catch (e) {}
@@ -6550,6 +6608,15 @@
       window.logoutSession = logoutSession;
 
       window.addEventListener('DOMContentLoaded', bootApplication);
+      window.addEventListener('hashchange', () => {
+        if (shouldOpenPublicCatalogFromUrl() && !isPublicCatalogViewActive) {
+          const urlStore = getUrlStoreIdParam();
+          if (urlStore) activeStoreId = urlStore;
+          loadLocalState();
+          applyStoreIdentity();
+          activatePublicCatalogScreen(false);
+        }
+      });
     })();
   </script>
 </body>
