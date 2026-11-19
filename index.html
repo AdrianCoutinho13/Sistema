@@ -3661,11 +3661,12 @@
       }
 
       function copySaasRlsFixSql() {
-        const sqlScript = `-- Execute no SQL Editor do Supabase para liberar as funções RPC de Gestão SaaS (sem perder nenhum dado):
+        const sqlScript = `-- Execute no SQL Editor do Supabase (não exige ser dono da tabela e preserva todos os dados):
 CREATE OR REPLACE FUNCTION public.erp_list_saas_tenants()
 RETURNS SETOF public.erp_saas_tenants
 LANGUAGE sql
 SECURITY DEFINER
+SET search_path = public
 AS $$
   SELECT * FROM public.erp_saas_tenants ORDER BY created_at DESC;
 $$;
@@ -3678,6 +3679,7 @@ CREATE OR REPLACE FUNCTION public.erp_update_saas_tenant_status(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
   UPDATE public.erp_saas_tenants
