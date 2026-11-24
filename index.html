@@ -7409,37 +7409,40 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         } catch (e) {}
       }
 
-      document.addEventListener('visibilitychange', async function () {
-        if (document.visibilityState !== 'visible' || !currentUser || securityViolated || isPublicCatalogViewActive) return;
-        const prevIds = new Set((appState.catalogOrders || []).map(o => o.id));
-        await mergePublicOrdersFromIsolatedTable();
-        const novos = (appState.catalogOrders || []).filter(o => !prevIds.has(o.id) && o.status === 'Aguardando Separação');
-        if (novos.length > 0) {
-          playNewOrderAlertBeep(5);
-          updateDashboardKPIs();
-          if (!document.getElementById('view-catalogo')?.classList.contains('hidden')) renderCatalogAdminSection();
-          showToast(`Novo pedido recebido no Catálogo Online: ${novos[0].customer} (${formatBRL(novos[0].total)})!`);
+      let catalogCheckRunning = false;
+      async function runCatalogOrdersCheck() {
+        if (catalogCheckRunning) return;
+        if (!currentUser || securityViolated || isPublicCatalogViewActive || !supabaseClient) return;
+        catalogCheckRunning = true;
+        try {
+          const prevIds = new Set((appState.catalogOrders || []).map(o => o.id));
+          await mergePublicOrdersFromIsolatedTable();
+          const novos = (appState.catalogOrders || []).filter(o => !prevIds.has(o.id) && o.status === 'Aguardando Separação');
+          if (novos.length > 0) {
+            /* Cada passo é isolado: se um falhar, os outros continuam e o pedido aparece mesmo assim */
+            try { renderCatalogAdminSection(); } catch (e) { console.error('Catálogo:', e); }
+            try { updateDashboardKPIs(); } catch (e) { console.error('KPIs:', e); }
+            try { playNewOrderAlertBeep(5); } catch (e) { console.error('Alerta:', e); }
+            try { showToast(`Novo pedido recebido no Catálogo Online: ${novos[0].customer} (${formatBRL(novos[0].total)})!`); } catch (e) {}
+          }
+        } catch (e) {
+          console.error('Falha ao buscar pedidos do catálogo:', e);
+        } finally {
+          catalogCheckRunning = false;
         }
+      }
+
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') runCatalogOrdersCheck();
       });
+      window.addEventListener('focus', function () { runCatalogOrdersCheck(); });
+
+      /* Verificação fixa a cada 8s, independente do restante do login/painel */
+      setInterval(runCatalogOrdersCheck, 8000);
 
       function startCatalogOrdersRealtimeMonitor() {
         knownCatalogOrderIds = new Set((appState.catalogOrders || []).map(o => o.id));
-        if (catalogOrderPollTimer) clearInterval(catalogOrderPollTimer);
-
-        catalogOrderPollTimer = setInterval(async () => {
-          if (!currentUser || securityViolated || isPublicCatalogViewActive) return;
-          const prevIds = new Set((appState.catalogOrders || []).map(o => o.id));
-          await mergePublicOrdersFromIsolatedTable();
-          const newOrders = (appState.catalogOrders || []).filter(o => !prevIds.has(o.id) && o.status === 'Aguardando Separação');
-          if (newOrders.length > 0) {
-            playNewOrderAlertBeep(5);
-            updateDashboardKPIs();
-            if (!document.getElementById('view-catalogo')?.classList.contains('hidden')) {
-              renderCatalogAdminSection();
-            }
-            showToast(`Novo pedido recebido no Catálogo Online: ${newOrders[0].customer} (${formatBRL(newOrders[0].total)})!`);
-          }
-        }, 8000);
+        runCatalogOrdersCheck();
       }
 
       /* ==================== INICIALIZAÇÃO GERAL DO SISTEMA ==================== */
