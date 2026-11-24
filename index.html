@@ -2813,10 +2813,12 @@
         pushStateToSupabase(false, silentCloud);
       }
 
+      let cloudPushInFlight = 0;
       async function pushStateToSupabase(notify = false) {
         if (!supabaseClient || securityViolated) return;
         const storeId = getActiveStoreId();
         if (!cloudSyncHydrated && !notify) return;
+        cloudPushInFlight++;
         try {
           const { error } = await supabaseClient
             .from('erp_store_state')
@@ -2827,6 +2829,8 @@
         } catch (err) {
           updateDbStatusUI(false);
           if (notify) showToast('Aviso RLS: ' + err.message, true);
+        } finally {
+          cloudPushInFlight = Math.max(0, cloudPushInFlight - 1);
         }
       }
 
@@ -3104,6 +3108,7 @@
           if (error) throw error;
           if (data && data.payload) {
             const remote = data.payload;
+            const localHandledKeep = { ...(appState.catalogOrdersHandled || {}) };
             appState = {
               ...appState,
               ...remote,
@@ -3116,6 +3121,7 @@
               costs: Array.isArray(remote.costs) ? remote.costs : [],
               entities: Array.isArray(remote.entities) && remote.entities.length > 0 ? remote.entities : appState.entities
             };
+            appState.catalogOrdersHandled = { ...(remote.catalogOrdersHandled || {}), ...localHandledKeep };
           } else {
             if (!canManageSaasPlatform()) {
               appState.store.name = currentUser?.storeName || appState.store.name;
@@ -3128,6 +3134,7 @@
 
           cloudSyncHydrated = true;
           await mergePublicOrdersFromIsolatedTable();
+          applyCatalogOrdersHandled();
           localStorage.setItem(getScopedStorageKey(), JSON.stringify(appState));
           if (appState.store) localStorage.setItem(getScopedBrandKey(), JSON.stringify(appState.store));
 
@@ -3173,6 +3180,8 @@
 
           for (const row of rows) {
             const orderCode = row.order_code || row.id;
+            if (row.status === 'Excluído') continue;
+            if (appState.catalogOrdersHandled && appState.catalogOrdersHandled[orderCode]) continue;
             const exists = appState.catalogOrders.some(o => o.id === orderCode);
             if (!exists) {
               appState.catalogOrders.unshift({
@@ -4793,6 +4802,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       }
 
       function clearPDVCart() {
+        pdvLinkedCatalogOrderId = null;
         cartItems = [];
         const discVal = document.getElementById('pdv-discount-value');
         if (discVal) discVal.value = 0;
@@ -4919,6 +4929,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
       function completePDVSale() {
         if (!cartItems.length) return showToast('Adicione pelo menos 1 produto ao carrinho.', true);
+        const linkedCatalogOrderId = pdvLinkedCatalogOrderId;
         const customer = document.getElementById('pdv-customer-select')?.value || 'Consumidor Final';
         const payment = document.getElementById('pdv-payment-select')?.value || 'Pix';
         const { subtotal, discountAmount, total } = calculatePDVCartTotals();
@@ -4962,10 +4973,16 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         });
 
         clearPDVCart();
-        saveState();
+        if (linkedCatalogOrderId) {
+          finalizeLinkedCatalogOrder(linkedCatalogOrderId, saleId);
+        } else {
+          saveState();
+        }
         renderPDVGrid();
         updateDashboardKPIs();
-        showToast(`Venda ${saleId} concluída no valor de ${formatBRL(total)}!`);
+        showToast(linkedCatalogOrderId
+          ? `Venda ${saleId} concluída! Pedido ${linkedCatalogOrderId} marcado como Faturado.`
+          : `Venda ${saleId} concluída no valor de ${formatBRL(total)}!`);
       }
 
       /* ==================== MÓDULO DEDICADO DE ORÇAMENTOS COMERCIAIS ==================== */
@@ -7002,7 +7019,9 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         const payment = document.getElementById('pub-cat-payment')?.value || 'Pix';
         const notes = (document.getElementById('pub-cat-notes')?.value || '').trim();
         const total = publicCatalogCart.reduce((acc, i) => acc + (Number(i.price || 0) * Number(i.qty || 0)), 0);
-        const orderId = 'PED-' + Date.now().toString().slice(-6);
+        const _dNow = new Date();
+        const _p2 = (n) => String(n).padStart(2, '0');
+        const orderId = 'PED-' + String(_dNow.getFullYear()).slice(-2) + _p2(_dNow.getMonth() + 1) + _p2(_dNow.getDate()) + '-' + _p2(_dNow.getHours()) + _p2(_dNow.getMinutes()) + _p2(_dNow.getSeconds());
         const storeId = getActiveStoreId();
 
         const btn = document.getElementById('pub-cat-submit-btn');
@@ -7262,6 +7281,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
                 <td class="py-3 px-3 text-right font-extrabold text-white tabular-nums">${formatBRL(o.total)}</td>
                 <td class="py-3 px-3 text-right space-x-1 whitespace-nowrap">
                   ${isWaiting ? `<button type="button" onclick="markCatalogOrderSeparated('${escapeHtmlStr(o.id)}')" class="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold">Marcar Separado</button>` : ''}
+                  ${o.status !== 'Faturado' ? `<button type="button" onclick="sendCatalogOrderToPDV('${escapeHtmlStr(o.id)}')" class="px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold">Enviar ao PDV</button>` : ''}
                   ${o.status !== 'Faturado' ? `<button type="button" onclick="invoiceCatalogOrder('${escapeHtmlStr(o.id)}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-bold">Faturar Venda</button>` : ''}
                   ${o.phone && o.phone !== '-' ? `<button type="button" onclick="notifyCatalogCustomerWhatsApp('${escapeHtmlStr(o.id)}')" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold">WhatsApp</button>` : ''}
                   <button type="button" onclick="deleteCatalogOrder('${escapeHtmlStr(o.id)}')" class="px-2 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 font-semibold">Excluir</button>
@@ -7271,10 +7291,82 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           : '<tr><td colspan="6" class="py-8 text-center text-slate-500">Nenhum pedido recebido pelo catálogo online neste filtro.</td></tr>';
       }
 
+      /* Lembra o que já foi feito com cada pedido, para ele não voltar depois de atualizar */
+      function setCatalogOrderHandled(orderId, status) {
+        if (!appState.catalogOrdersHandled || typeof appState.catalogOrdersHandled !== 'object') appState.catalogOrdersHandled = {};
+        delete appState.catalogOrdersHandled[orderId];
+        appState.catalogOrdersHandled[orderId] = status;
+        const keys = Object.keys(appState.catalogOrdersHandled);
+        if (keys.length > 1500) keys.slice(0, keys.length - 1500).forEach(k => delete appState.catalogOrdersHandled[k]);
+      }
+
+      function applyCatalogOrdersHandled() {
+        const h = appState.catalogOrdersHandled || {};
+        if (!Array.isArray(appState.catalogOrders)) return;
+        appState.catalogOrders = appState.catalogOrders.filter(o => h[o.id] !== 'Excluído');
+        appState.catalogOrders.forEach(o => {
+          const st = h[o.id];
+          if (st === 'Faturado') o.status = 'Faturado';
+          else if (st === 'Separado' && o.status === 'Aguardando Separação') o.status = 'Separado';
+        });
+      }
+
+      let pdvLinkedCatalogOrderId = null;
+
+      function sendCatalogOrderToPDV(orderId) {
+        const order = (appState.catalogOrders || []).find(o => o.id === orderId);
+        if (!order) return;
+        if (order.status === 'Faturado') return showToast('Este pedido já foi faturado.', true);
+        cartItems = (order.items || []).map(it => ({
+          productId: it.productId,
+          name: it.name,
+          price: Number(it.price || 0),
+          qty: Number(it.qty || 1)
+        }));
+        navigateTo('vendas');
+        const custSel = document.getElementById('pdv-customer-select');
+        if (custSel && order.customer) {
+          if (!Array.from(custSel.options).some(o => o.value === order.customer)) {
+            const opt = document.createElement('option');
+            opt.value = order.customer;
+            opt.textContent = order.customer;
+            custSel.appendChild(opt);
+          }
+          custSel.value = order.customer;
+        }
+        const paySel = document.getElementById('pdv-payment-select');
+        if (paySel && order.payment && Array.from(paySel.options).some(o => o.value === order.payment)) {
+          paySel.value = order.payment;
+        }
+        const discVal = document.getElementById('pdv-discount-value');
+        if (discVal) discVal.value = 0;
+        renderPDVCart();
+        pdvLinkedCatalogOrderId = orderId;
+        showToast(`Pedido ${orderId} carregado no PDV. Ao finalizar a venda ele será marcado como Faturado.`);
+      }
+
+      async function finalizeLinkedCatalogOrder(orderId, saleId) {
+        const order = (appState.catalogOrders || []).find(o => o.id === orderId);
+        setCatalogOrderHandled(orderId, 'Faturado');
+        if (order) {
+          order.status = 'Faturado';
+          order.convertedSaleId = saleId;
+        }
+        if (supabaseClient) {
+          try {
+            await supabaseClient.from('erp_public_orders').update({ status: 'Faturado' }).eq('order_code', orderId);
+          } catch (e) {}
+        }
+        saveState();
+        try { renderCatalogAdminSection(); } catch (e) {}
+        try { updateDashboardKPIs(); } catch (e) {}
+      }
+
       async function markCatalogOrderSeparated(orderId) {
         const order = (appState.catalogOrders || []).find(o => o.id === orderId);
         if (!order) return;
         order.status = 'Separado';
+        setCatalogOrderHandled(orderId, 'Separado');
         if (supabaseClient) {
           try {
             await supabaseClient
@@ -7323,6 +7415,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
         order.status = 'Faturado';
         order.convertedSaleId = saleId;
+        setCatalogOrderHandled(orderId, 'Faturado');
 
         if (supabaseClient) {
           try {
@@ -7352,12 +7445,16 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
       async function deleteCatalogOrder(orderId) {
         appState.catalogOrders = (appState.catalogOrders || []).filter(o => o.id !== orderId);
+        setCatalogOrderHandled(orderId, 'Excluído');
         if (supabaseClient) {
           try {
-            await supabaseClient
+            const { error: delErr } = await supabaseClient
               .from('erp_public_orders')
               .delete()
               .eq('order_code', orderId);
+            if (delErr) {
+              await supabaseClient.from('erp_public_orders').update({ status: 'Excluído' }).eq('order_code', orderId);
+            }
           } catch (e) {}
         }
         saveState();
@@ -7421,19 +7518,58 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         return false;
       }
 
+      let lastFullPullAt = Date.now();
+      let pendingAlertCount = 0;
+
+      /* Consulta bem leve (só códigos dos pedidos) para não gastar o limite do plano grátis */
+      async function listUnseenCatalogOrders() {
+        const storeId = getActiveStoreId();
+        let rows = null;
+        const r1 = await supabaseClient
+          .from('erp_public_orders')
+          .select('order_code,status,customer_name,total,store_id')
+          .eq('store_id', storeId)
+          .order('created_at', { ascending: false })
+          .limit(100);
+        if (!r1.error && Array.isArray(r1.data)) {
+          rows = r1.data;
+        } else {
+          const r2 = await supabaseClient
+            .from('erp_public_orders')
+            .select('order_code,status,customer_name,total,store_id')
+            .order('created_at', { ascending: false })
+            .limit(100);
+          if (!r2.error && Array.isArray(r2.data)) rows = r2.data.filter(r => !r.store_id || r.store_id === storeId);
+        }
+        if (!rows) return [];
+        const known = new Set((appState.catalogOrders || []).map(o => o.id));
+        const handled = appState.catalogOrdersHandled || {};
+        return rows.filter(r => r.order_code && r.status !== 'Excluído' && !known.has(r.order_code) && !handled[r.order_code]);
+      }
+
       async function runCatalogOrdersCheck() {
         if (catalogCheckRunning) return;
         if (!currentUser || securityViolated || isPublicCatalogViewActive || !supabaseClient) return;
-        if (isUserBusyNow()) return;
+        if (cloudPushInFlight > 0) return;
         catalogCheckRunning = true;
         try {
-          const prevIds = new Set((appState.catalogOrders || []).map(o => o.id));
-          /* Mesma atualização do botão "Atualizar Pedidos", só que silenciosa */
-          await pullStateFromSupabase(false);
-          const novos = (appState.catalogOrders || []).filter(o => !prevIds.has(o.id) && o.status === 'Aguardando Separação');
-          if (novos.length > 0) {
+          const unseen = await listUnseenCatalogOrders();
+
+          /* Avisa assim que o pedido chega, mesmo que você esteja digitando */
+          if (unseen.length > pendingAlertCount) {
+            pendingAlertCount = unseen.length;
             try { playNewOrderAlertBeep(5); } catch (e) {}
-            try { showToast(`Novo pedido recebido no Catálogo Online: ${novos[0].customer} (${formatBRL(novos[0].total)})!`); } catch (e) {}
+            try { showToast(`Novo pedido recebido no Catálogo Online: ${unseen[0].customer_name || 'Cliente'} (${formatBRL(unseen[0].total || 0)})!`); } catch (e) {}
+          }
+
+          /* Só atualiza a tela se você não estiver no meio de uma ação */
+          if (isUserBusyNow()) return;
+
+          const dueFull = (Date.now() - lastFullPullAt) > 300000;
+          if (unseen.length > 0 || dueFull) {
+            await pullStateFromSupabase(false);
+            lastFullPullAt = Date.now();
+            pendingAlertCount = 0;
           }
         } catch (e) {
           console.error('Falha ao atualizar em segundo plano:', e);
@@ -7442,8 +7578,12 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         }
       }
 
-      /* Atualização automática silenciosa a cada 40 segundos */
-      setInterval(runCatalogOrdersCheck, 40000);
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') runCatalogOrdersCheck();
+      });
+
+      /* Verificação automática a cada 10 segundos */
+      setInterval(runCatalogOrdersCheck, 10000);
 
       function startCatalogOrdersRealtimeMonitor() {
         knownCatalogOrderIds = new Set((appState.catalogOrders || []).map(o => o.id));
@@ -7639,6 +7779,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         renderCatalogOrdersTable,
         markCatalogOrderSeparated,
         invoiceCatalogOrder,
+        sendCatalogOrderToPDV,
         notifyCatalogCustomerWhatsApp,
         deleteCatalogOrder,
         playNewOrderAlertBeep,
