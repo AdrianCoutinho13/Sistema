@@ -7410,35 +7410,40 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       }
 
       let catalogCheckRunning = false;
+
+      /* Só atualiza em silêncio quando você não está no meio de uma ação */
+      function isUserBusyNow() {
+        const ae = document.activeElement;
+        const tag = (ae && ae.tagName ? ae.tagName : '').toUpperCase();
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+        const modais = ['modal-produto', 'modal-edit-sale', 'modal-edit-tx', 'modal-loja'];
+        if (modais.some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); })) return true;
+        return false;
+      }
+
       async function runCatalogOrdersCheck() {
         if (catalogCheckRunning) return;
         if (!currentUser || securityViolated || isPublicCatalogViewActive || !supabaseClient) return;
+        if (isUserBusyNow()) return;
         catalogCheckRunning = true;
         try {
           const prevIds = new Set((appState.catalogOrders || []).map(o => o.id));
-          await mergePublicOrdersFromIsolatedTable();
+          /* Mesma atualização do botão "Atualizar Pedidos", só que silenciosa */
+          await pullStateFromSupabase(false);
           const novos = (appState.catalogOrders || []).filter(o => !prevIds.has(o.id) && o.status === 'Aguardando Separação');
           if (novos.length > 0) {
-            /* Cada passo é isolado: se um falhar, os outros continuam e o pedido aparece mesmo assim */
-            try { renderCatalogAdminSection(); } catch (e) { console.error('Catálogo:', e); }
-            try { updateDashboardKPIs(); } catch (e) { console.error('KPIs:', e); }
-            try { playNewOrderAlertBeep(5); } catch (e) { console.error('Alerta:', e); }
+            try { playNewOrderAlertBeep(5); } catch (e) {}
             try { showToast(`Novo pedido recebido no Catálogo Online: ${novos[0].customer} (${formatBRL(novos[0].total)})!`); } catch (e) {}
           }
         } catch (e) {
-          console.error('Falha ao buscar pedidos do catálogo:', e);
+          console.error('Falha ao atualizar em segundo plano:', e);
         } finally {
           catalogCheckRunning = false;
         }
       }
 
-      document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'visible') runCatalogOrdersCheck();
-      });
-      window.addEventListener('focus', function () { runCatalogOrdersCheck(); });
-
-      /* Verificação fixa a cada 8s, independente do restante do login/painel */
-      setInterval(runCatalogOrdersCheck, 8000);
+      /* Atualização automática silenciosa a cada 40 segundos */
+      setInterval(runCatalogOrdersCheck, 40000);
 
       function startCatalogOrdersRealtimeMonitor() {
         knownCatalogOrderIds = new Set((appState.catalogOrders || []).map(o => o.id));
