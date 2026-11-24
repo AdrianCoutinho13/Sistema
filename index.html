@@ -719,6 +719,11 @@
               <span>Identidade & Tema da Loja</span>
             </button>
 
+            <button type="button" onclick="closeProfileMenu(); openChangePasswordModal({ self: true })" class="w-full text-left px-4 py-2 text-xs hover:bg-sky-500/10 flex items-center gap-2.5 transition font-medium" style="color: var(--text-secondary);">
+              <svg class="w-4 h-4 shrink-0" style="color: var(--accent-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+              <span>Trocar minha senha</span>
+            </button>
+
             <button onclick="logoutSession()" class="w-full text-left px-4 py-2 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2.5 transition font-semibold">
               <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
               <span>Sair / Encerrar Sessão</span>
@@ -1930,6 +1935,7 @@
                   <th class="py-3 px-3">E-mail</th>
                   <th class="py-3 px-3">Cargo / Permissão</th>
                   <th class="py-3 px-3">Proteção da Senha</th>
+                  <th class="py-3 px-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody id="team-table-body" class="divide-y divide-slate-800/70"></tbody>
@@ -3626,16 +3632,137 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
           appState.team = users;
           tbody.innerHTML = users.length
-            ? users.map(u => `
+            ? users.map((u, uIdx) => `
               <tr class="hover:bg-slate-800/40">
                 <td class="py-3 px-3 font-bold text-white">${escapeHtmlStr(u.username)}</td>
                 <td class="py-3 px-3 text-slate-400">${escapeHtmlStr(u.email || '-')}</td>
                 <td class="py-3 px-3"><span class="px-2 py-0.5 rounded badge-accent text-[11px] font-semibold">${escapeHtmlStr(u.role)}</span></td>
                 <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-mono font-bold">BCRYPT HASH PROTEGIDO</span></td>
+                <td class="py-3 px-3 text-right"><button type="button" onclick="openTeamPasswordChange(${uIdx})" class="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold">Trocar senha</button></td>
               </tr>`).join('')
             : '<tr><td colspan="4" class="py-6 text-center text-slate-500">Nenhum usuário cadastrado nesta loja.</td></tr>';
         } catch (err) {
           tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-red-400">${escapeHtmlStr(err.message)}</td></tr>`;
+        }
+      }
+
+      /* ==================== TROCAR SENHA (própria ou de um usuário da equipe) ==================== */
+      let pwdModalCtx = null;
+
+      async function verifyPasswordRpc(login, pass) {
+        const r1 = await supabaseClient.rpc('erp_authenticate_user_saas', { p_login: login, p_password: pass });
+        if (!r1.error && Array.isArray(r1.data) && r1.data.length > 0) return true;
+        const r2 = await supabaseClient.rpc('erp_authenticate_user', { p_login: login, p_password: pass });
+        return !r2.error && Array.isArray(r2.data) && r2.data.length > 0;
+      }
+
+      function openTeamPasswordChange(idx) {
+        if (!isMasterAdmin()) return showToast('Apenas o Master Admin pode trocar a senha da equipe.', true);
+        const u = (appState.team || [])[idx];
+        if (!u) return;
+        if (String(u.role || '').toLowerCase().includes('super') && !isSuperAdmin()) {
+          return showToast('Apenas o Super Admin pode trocar a senha de outro Super Admin.', true);
+        }
+        const isMe = currentUser && String(u.username || '').toLowerCase() === String(currentUser.name || '').toLowerCase();
+        openChangePasswordModal(isMe
+          ? { self: true }
+          : { self: false, username: u.username, email: u.email || '', role: u.role || 'Operador PDV', storeId: getActiveStoreId() });
+      }
+
+      function openChangePasswordModal(opts) {
+        if (!currentUser) return;
+        closeChangePasswordModal();
+        const ctx = opts && opts.self
+          ? { self: true, username: currentUser.name, email: currentUser.email || '', role: currentUser.role || 'Operador PDV', storeId: currentUser.storeId || getActiveStoreId() }
+          : opts;
+        pwdModalCtx = ctx;
+        const wrap = document.createElement('div');
+        wrap.id = 'pwd-change-modal';
+        wrap.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4';
+        wrap.innerHTML = `
+          <div class="w-full max-w-sm erp-card p-5 space-y-3">
+            <div>
+              <h3 class="text-base font-extrabold text-white">Trocar senha</h3>
+              <p class="text-[11px] text-slate-400">Usuário: <strong class="text-white">${escapeHtmlStr(ctx.username)}</strong></p>
+            </div>
+            ${ctx.self ? `<div><label class="block text-[11px] text-slate-400 mb-1">Senha atual *</label>
+              <input type="password" id="pwd-current" autocomplete="current-password" class="erp-input w-full px-3 py-2.5 text-xs" /></div>` : ''}
+            <div><label class="block text-[11px] text-slate-400 mb-1">Nova senha * (mínimo 8 caracteres)</label>
+              <input type="password" id="pwd-new1" autocomplete="new-password" class="erp-input w-full px-3 py-2.5 text-xs" /></div>
+            <div><label class="block text-[11px] text-slate-400 mb-1">Repita a nova senha *</label>
+              <input type="password" id="pwd-new2" autocomplete="new-password" class="erp-input w-full px-3 py-2.5 text-xs" /></div>
+            <div id="pwd-error-box" class="hidden text-[11px] font-semibold text-red-400"></div>
+            <div class="flex justify-end gap-2 pt-1">
+              <button type="button" onclick="closeChangePasswordModal()" class="px-4 py-2 rounded-xl erp-pill text-xs font-semibold">Cancelar</button>
+              <button type="button" id="pwd-save-btn" onclick="submitChangePassword()" class="btn-accent px-4 py-2 text-xs font-bold">Salvar nova senha</button>
+            </div>
+          </div>`;
+        document.body.appendChild(wrap);
+        setTimeout(() => document.getElementById(ctx.self ? 'pwd-current' : 'pwd-new1')?.focus(), 50);
+      }
+
+      function closeChangePasswordModal() {
+        document.getElementById('pwd-change-modal')?.remove();
+        pwdModalCtx = null;
+      }
+
+      async function submitChangePassword() {
+        const ctx = pwdModalCtx;
+        if (!ctx) return;
+        const box = document.getElementById('pwd-error-box');
+        const btn = document.getElementById('pwd-save-btn');
+        const showErr = (m) => { if (box) { box.textContent = m; box.classList.remove('hidden'); } };
+        if (box) box.classList.add('hidden');
+
+        const cur = document.getElementById('pwd-current')?.value || '';
+        const n1 = document.getElementById('pwd-new1')?.value || '';
+        const n2 = document.getElementById('pwd-new2')?.value || '';
+
+        if (ctx.self && !cur) return showErr('Digite sua senha atual.');
+        if (n1.length < 8) return showErr('A nova senha precisa ter pelo menos 8 caracteres.');
+        if (n1 !== n2) return showErr('As duas senhas novas não são iguais.');
+        if (['12345678', '123456789', '1234567890', 'password', 'admin123', 'senha123', '11111111'].includes(n1.toLowerCase())
+          || n1.toLowerCase() === String(ctx.username || '').toLowerCase()) {
+          return showErr('Escolha uma senha mais forte (evite sequências e o próprio nome de usuário).');
+        }
+        if (!supabaseClient) return showErr('Sem conexão com o banco de dados.');
+
+        if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+        try {
+          if (ctx.self) {
+            const ok = await verifyPasswordRpc(ctx.username, cur);
+            if (!ok) return showErr('Senha atual incorreta.');
+          }
+
+          const { error: saasErr } = await supabaseClient.rpc('erp_upsert_team_user_saas', {
+            p_store_id: ctx.storeId,
+            p_username: ctx.username,
+            p_email: ctx.email || '',
+            p_role: ctx.role,
+            p_plain_password: n1
+          });
+          if (saasErr) {
+            const { error: legacyErr } = await supabaseClient.rpc('erp_upsert_team_user', {
+              p_username: ctx.username,
+              p_email: ctx.email || '',
+              p_role: ctx.role,
+              p_plain_password: n1
+            });
+            if (legacyErr) throw new Error(legacyErr.message || saasErr.message || 'Falha ao gravar a nova senha.');
+          }
+
+          const confirmed = await verifyPasswordRpc(ctx.username, n1);
+          if (!confirmed) {
+            return showErr('A senha foi enviada, mas não consegui confirmar. Saia e tente entrar com a NOVA senha; se não funcionar, use a antiga.');
+          }
+
+          closeChangePasswordModal();
+          showToast(`Senha de "${ctx.username}" alterada com sucesso!`);
+        } catch (err) {
+          showErr('Não foi possível trocar a senha: ' + (err.message || 'erro inesperado'));
+        } finally {
+          const b = document.getElementById('pwd-save-btn');
+          if (b) { b.disabled = false; b.textContent = 'Salvar nova senha'; }
         }
       }
 
@@ -7776,6 +7903,10 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         renderCatalogOrdersTable,
         markCatalogOrderSeparated,
         invoiceCatalogOrder,
+        openChangePasswordModal,
+        closeChangePasswordModal,
+        submitChangePassword,
+        openTeamPasswordChange,
         sendCatalogOrderToPDV,
         notifyCatalogCustomerWhatsApp,
         deleteCatalogOrder,
