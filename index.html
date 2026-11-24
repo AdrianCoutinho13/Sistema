@@ -2384,7 +2384,7 @@
         const role = String(currentUser?.role || '').toLowerCase();
         const uname = String(currentUser?.name || '').toLowerCase();
         const storeId = String(currentUser?.storeId || '').toLowerCase();
-        return role.includes('super') || uname === 'adrian' || storeId === 'admin_platform';
+        return role.includes('super');
       }
 
       function canManageSaasPlatform() {
@@ -2904,9 +2904,7 @@
               return;
             }
             const rawStoreId = matched.store_id || 'main_store';
-            const isPlatformSuper = String(matched.role || '').toLowerCase().includes('super') ||
-              String(matched.username || '').toLowerCase() === 'adrian' ||
-              String(rawStoreId).toLowerCase() === 'admin_platform';
+            const isPlatformSuper = String(matched.role || '').toLowerCase().includes('super');
 
             authenticatedUser = {
               id: matched.id,
@@ -2956,9 +2954,7 @@
           }
 
           loginAttempts = 0;
-          const isPlatSuper = String(authenticatedUser.role || '').toLowerCase().includes('super') ||
-            String(authenticatedUser.name || '').toLowerCase() === 'adrian' ||
-            String(authenticatedUser.storeId || '').toLowerCase() === 'admin_platform';
+          const isPlatSuper = String(authenticatedUser.role || '').toLowerCase().includes('super');
 
           activeStoreId = isPlatSuper ? 'for_comerce' : (authenticatedUser.storeId || 'main_store');
           authenticatedUser.sessionSig = btoa(`${authenticatedUser.id}:${authenticatedUser.storeId}:${STORE_LICENSE_KEY}`);
@@ -7635,9 +7631,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
             const expectedSig = btoa(`${parsedUser.id}:${parsedUser.storeId}:${STORE_LICENSE_KEY}`);
             if (parsedUser && parsedUser.sessionSig === expectedSig) {
               currentUser = parsedUser;
-              const isPlatSuper = String(parsedUser.role || '').toLowerCase().includes('super') ||
-                String(parsedUser.name || '').toLowerCase() === 'adrian' ||
-                String(parsedUser.storeId || '').toLowerCase() === 'admin_platform';
+              const isPlatSuper = String(parsedUser.role || '').toLowerCase().includes('super');
               activeStoreId = isPlatSuper ? (activeStoreId || 'for_comerce') : (parsedUser.storeId || 'main_store');
               loadLocalState();
               applyAuthenticatedSession();
