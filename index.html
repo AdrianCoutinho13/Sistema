@@ -2181,12 +2181,12 @@
           <video id="barcode-video" class="w-full h-40 object-cover" autoplay playsinline></video>
         </div>
         <div class="flex gap-2">
-          <input type="text" id="prod-sku" placeholder="Bipe ou digite o código EAN/GTIN" class="erp-input w-full px-3 py-2 text-xs font-mono" oninput="scheduleBarcodeLookup(this.value)" onkeydown="if(event.key === 'Enter'){event.preventDefault();lookupBarcodeOnline();}" onblur="lookupBarcodeOnline()" />
+          <input type="text" id="prod-sku" placeholder="Bipe ou digite o código EAN/GTIN" class="erp-input w-full px-3 py-2 text-xs font-mono" oninput="scheduleBarcodeLookup(this.value)" onkeydown="if(event.key === 'Enter'){event.preventDefault();lookupBarcodeOnline();}" onblur="lookupBarcodeOnline(false)" />
           <button type="button" id="btn-lookup-barcode" onclick="lookupBarcodeOnline()" class="btn-accent px-3 py-2 text-xs shrink-0 flex items-center gap-1">
             <span>Buscar IA</span>
           </button>
         </div>
-        <p id="barcode-lookup-status" role="status" aria-live="polite" class="text-[11px] text-slate-400">Bipe o EAN (ex: 7896029088412) ou digite o nome para sugestões de Pet Shop e outros.</p>
+        <p id="barcode-lookup-status" role="status" aria-live="polite" class="text-[11px] text-slate-400">Bipe o EAN (ex: 7891910000197) ou digite o nome para sugestões de Pet Shop e outros.</p>
         <div id="barcode-ai-suggestions" class="hidden space-y-2 pt-1.5 border-t border-slate-800/80"></div>
       </div>
 
@@ -4564,7 +4564,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         document.getElementById('prod-stock').value = prod ? prod.stock : 10;
         document.getElementById('prod-cost').value = prod ? (prod.cost || 0) : 0;
         document.getElementById('prod-price').value = prod ? prod.price : '';
-        document.getElementById('barcode-lookup-status').textContent = 'Bipe o EAN (ex: 7896029088412) ou digite o nome para sugestões de Pet Shop e outros.';
+        document.getElementById('barcode-lookup-status').textContent = 'Bipe o EAN (ex: 7891910000197) ou digite o nome para sugestões de Pet Shop e outros.';
         const sugBox = document.getElementById('barcode-ai-suggestions');
         if (sugBox) {
           sugBox.innerHTML = '';
@@ -4663,6 +4663,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           showToast('Novo produto cadastrado!');
         }
 
+        saveBarcodeToSharedCatalog(sku, name, group);
         saveState();
         closeProductModal();
         renderProductsTable();
@@ -4742,6 +4743,49 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         showToast('Produto preenchido com sucesso!');
       }
 
+      /* ---------- Utilidades do leitor de código de barras ---------- */
+      function isValidGtin(code) {
+        if (!/^\d+$/.test(code) || ![8, 12, 13, 14].includes(code.length)) return false;
+        const digits = code.split('').map(Number);
+        const check = digits.pop();
+        let sum = 0;
+        digits.reverse().forEach((d, i) => { sum += d * (i % 2 === 0 ? 3 : 1); });
+        return ((10 - (sum % 10)) % 10) === check;
+      }
+
+      function prettifyProductName(raw) {
+        let t = String(raw || '').replace(/\s+/g, ' ').trim();
+        if (!t) return '';
+        const letters = t.replace(/[^A-Za-zÀ-ÿ]/g, '');
+        const upper = letters.replace(/[^A-ZÀ-Þ]/g, '').length;
+        if (letters.length > 3 && upper / letters.length > 0.7) {
+          const small = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'com', 'para', 'em', 'a', 'o', 'sem', 'por']);
+          const acronyms = new Set(['led', 'pvc', 'usb', 'hdmi', 'tv', 'lcd', 'ppr', 'ip', 'rj45', 'dvd', 'cd']);
+          const units = { kg: 'kg', g: 'g', mg: 'mg', ml: 'ml', l: 'L', un: 'un', mm: 'mm', cm: 'cm', m: 'm', w: 'W', v: 'V', a: 'A', hz: 'Hz' };
+          t = t.toLowerCase().split(' ').map((w, i, arr) => {
+            if (units[w] && i > 0 && /^[\d.,]+$/.test(arr[i - 1])) return units[w];
+            if (/^\d/.test(w)) return w.replace(/^([\d.,]+)([a-z]+)$/i, (m, n, u) => n + (units[u.toLowerCase()] || u));
+            if (acronyms.has(w)) return w.toUpperCase();
+            if (i > 0 && small.has(w)) return w;
+            return w.charAt(0).toUpperCase() + w.slice(1);
+          }).join(' ');
+        }
+        return t;
+      }
+
+      /* Nome (slug) da função criada no Supabase em Edge Functions */
+      const BARCODE_FUNCTION_NAME = 'bright-task';
+      let barcodeEdgeDisabled = false;
+
+      /* Guarda o nome no catálogo compartilhado (se a tabela existir), para as próximas lojas acharem direto */
+      async function saveBarcodeToSharedCatalog(sku, name, group) {
+        try {
+          const code = String(sku || '').replace(/\s+/g, '');
+          if (!supabaseClient || !isValidGtin(code) || String(name || '').trim().length < 3) return;
+          await supabaseClient.rpc('save_barcode_catalog', { p_code: code, p_name: name, p_group: group || '' });
+        } catch (e) { /* silencioso: o catálogo compartilhado é opcional */ }
+      }
+
       async function lookupBarcodeOnline(force = true) {
         const rawCode = (document.getElementById('prod-sku')?.value || '').trim();
         const code = rawCode.replace(/\s+/g, '');
@@ -4776,7 +4820,20 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           return;
         }
 
-        statusEl.textContent = `Consultando bases globais GS1 / EAN (${code})...`;
+        /* Código interno (não é EAN/UPC): não adianta consultar bases públicas */
+        if (![8, 12, 13, 14].includes(code.length) || !/^\d+$/.test(code)) {
+          renderBarcodeAISuggestions([], code);
+          statusEl.textContent = 'Este parece ser um código interno (não é EAN/UPC). Digite o nome do produto abaixo.';
+          return;
+        }
+        /* Dígito verificador errado = leitura falhou ou código digitado errado */
+        if (!isValidGtin(code)) {
+          renderBarcodeAISuggestions([], code);
+          statusEl.textContent = `O código ${code} parece incorreto (dígito verificador inválido). Leia novamente ou confira os números.`;
+          return;
+        }
+
+        statusEl.textContent = `Procurando o nome do produto (${code})...`;
         if (btn) {
           btn.disabled = true;
           btn.innerHTML = '<span>Buscando...</span>';
@@ -4798,64 +4855,94 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           }
         };
 
+        const enc = encodeURIComponent(code);
+        const offFields = 'product_name,product_name_pt,generic_name,generic_name_pt,brands,quantity,categories';
+
         try {
-          const [offRes, opfRes, obfRes, upcRes] = await Promise.all([
-            fetchJsonWithTimeout(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`),
-            fetchJsonWithTimeout(`https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(code)}.json`),
-            fetchJsonWithTimeout(`https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(code)}.json`),
-            fetchJsonWithTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`)
+          const [sharedRes, edgeRes, offAll, opfRes, obfRes, petRes, upcRes] = await Promise.all([
+            /* 1) Catálogo compartilhado entre as lojas (opcional) */
+            (async () => {
+              try {
+                if (!supabaseClient) return null;
+                const { data, error } = await supabaseClient.rpc('lookup_barcode_catalog', { p_code: code });
+                if (error || !Array.isArray(data) || !data.length) return null;
+                return data[0];
+              } catch (e) { return null; }
+            })(),
+            /* 2) Base brasileira via função do servidor (opcional) */
+            (async () => {
+              try {
+                if (!supabaseClient || barcodeEdgeDisabled) return null;
+                const { data, error } = await supabaseClient.functions.invoke(BARCODE_FUNCTION_NAME, { body: { code } });
+                if (error) { barcodeEdgeDisabled = true; return null; }
+                return data && data.found ? data : null;
+              } catch (e) { barcodeEdgeDisabled = true; return null; }
+            })(),
+            /* 3) Open Facts (alimentos, cosméticos, produtos gerais e pet) */
+            fetchJsonWithTimeout(`https://world.openfoodfacts.org/api/v3/product/${enc}?product_type=all&fields=${offFields}`),
+            fetchJsonWithTimeout(`https://world.openproductsfacts.org/api/v0/product/${enc}.json`),
+            fetchJsonWithTimeout(`https://world.openbeautyfacts.org/api/v0/product/${enc}.json`),
+            fetchJsonWithTimeout(`https://world.openpetfoodfacts.org/api/v0/product/${enc}.json`),
+            fetchJsonWithTimeout(`https://api.upcitemdb.com/prod/trial/lookup?upc=${enc}`)
           ]);
 
-          const parseOpenFacts = (data, sourceLabel) => {
-            if (data && data.status === 1 && data.product) {
-              const p = data.product;
-              const brand = (p.brands || '').split(',')[0].trim();
-              const pname = (p.product_name_pt || p.product_name || p.generic_name_pt || p.generic_name || '').trim();
-              const qty = (p.quantity || '').trim();
-              if (pname) {
-                const fullTitle = [pname, brand && !pname.toLowerCase().includes(brand.toLowerCase()) ? brand : '', qty && !pname.includes(qty) ? qty : '']
-                  .filter(Boolean)
-                  .join(' ');
-                candidates.push({
-                  name: fullTitle,
-                  group: inferProductGroupFromText(fullTitle, p.categories || ''),
-                  price: 0,
-                  source: sourceLabel
-                });
-              }
-            }
-          };
-
-          parseOpenFacts(offRes, 'Open Food Facts');
-          parseOpenFacts(opfRes, 'Open Products Facts');
-          parseOpenFacts(obfRes, 'Open Beauty Facts');
-
-          if (upcRes && Array.isArray(upcRes.items)) {
-            upcRes.items.forEach(it => {
-              if (it.title) {
-                candidates.push({
-                  name: String(it.title).trim(),
-                  group: inferProductGroupFromText(it.title, it.category || ''),
-                  price: Number(it.lowest_recorded_price || 0),
-                  source: 'UPCitemdb Global'
-                });
-              }
+          if (sharedRes && sharedRes.r_name) {
+            const nm = prettifyProductName(sharedRes.r_name);
+            candidates.push({
+              name: nm,
+              group: sharedRes.r_group || inferProductGroupFromText(nm, ''),
+              price: 0,
+              source: 'Catálogo das lojas'
             });
           }
 
-          if (candidates.length === 0) {
-            const wikiData = await fetchJsonWithTimeout(
-              `https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(code)}&format=json&origin=*`,
-              3500
-            );
-            const hits = wikiData?.query?.search || [];
-            hits.slice(0, 2).forEach(h => {
-              if (h.title) {
+          if (edgeRes && edgeRes.name) {
+            const brand = String(edgeRes.brand || '').trim();
+            let nm = prettifyProductName(edgeRes.name);
+            if (brand && !nm.toLowerCase().includes(brand.toLowerCase())) nm = `${nm} ${prettifyProductName(brand)}`;
+            candidates.push({
+              name: nm,
+              group: inferProductGroupFromText(nm, edgeRes.category || ''),
+              price: 0,
+              source: edgeRes.source || 'Base brasileira'
+            });
+          }
+
+          const parseOpenFacts = (data, sourceLabel) => {
+            const p = data && data.product;
+            const found = data && (data.status === 1 || data.status === 'success' || data.status === 'success_with_errors' || (p && p.product_name !== undefined));
+            if (!found || !p) return;
+            const brand = (p.brands || '').split(',')[0].trim();
+            const pname = (p.product_name_pt || p.product_name || p.generic_name_pt || p.generic_name || '').trim();
+            const qty = (p.quantity || '').trim();
+            if (!pname) return;
+            const fullTitle = prettifyProductName([
+              pname,
+              brand && !pname.toLowerCase().includes(brand.toLowerCase()) ? brand : '',
+              qty && !pname.toLowerCase().includes(qty.toLowerCase()) ? qty : ''
+            ].filter(Boolean).join(' '));
+            candidates.push({
+              name: fullTitle,
+              group: inferProductGroupFromText(fullTitle, p.categories || ''),
+              price: 0,
+              source: sourceLabel
+            });
+          };
+
+          parseOpenFacts(offAll, 'Open Facts');
+          parseOpenFacts(opfRes, 'Open Products Facts');
+          parseOpenFacts(obfRes, 'Open Beauty Facts');
+          parseOpenFacts(petRes, 'Open Pet Food Facts');
+
+          if (upcRes && Array.isArray(upcRes.items)) {
+            upcRes.items.slice(0, 2).forEach(it => {
+              if (it.title) {
+                const nm = prettifyProductName(it.title);
                 candidates.push({
-                  name: h.title,
-                  group: inferProductGroupFromText(h.title, h.snippet || ''),
-                  price: 0,
-                  source: 'Referência Web'
+                  name: nm,
+                  group: inferProductGroupFromText(nm, it.category || ''),
+                  price: Number(it.lowest_recorded_price || 0),
+                  source: 'UPCitemdb'
                 });
               }
             });
@@ -4865,7 +4952,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           const seen = new Set();
           candidates.forEach(c => {
             const key = c.name.toLowerCase();
-            if (!seen.has(key)) {
+            if (c.name && !seen.has(key)) {
               seen.add(key);
               uniqueCandidates.push(c);
             }
@@ -4878,12 +4965,12 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
             if (best.price > 0) {
               document.getElementById('prod-price').value = best.price.toFixed(2);
             }
-            statusEl.textContent = `IA identificou: "${best.name}" (${best.group}). Confira o preço de venda e salve.`;
+            statusEl.textContent = `Encontrado: "${best.name}" (fonte: ${best.source}). Confira o nome, informe o preço de venda e salve.`;
             renderBarcodeAISuggestions(uniqueCandidates, code);
-            showToast('Produto preenchido automaticamente via IA!');
+            showToast('Nome do produto preenchido pelo código de barras!');
           } else {
             renderBarcodeAISuggestions([], code);
-            statusEl.textContent = `Código ${code} não consta nas bases públicas. Digite o nome e valor abaixo para cadastrá-lo permanentemente.`;
+            statusEl.textContent = `Código ${code} não encontrado nas bases públicas. Digite o nome uma vez: ele fica salvo e, se o catálogo das lojas estiver ativo, as próximas lojas já encontram.`;
             document.getElementById('prod-name')?.focus();
           }
         } catch (err) {
