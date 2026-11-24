@@ -17,7 +17,7 @@
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;700&display=swap" rel="stylesheet" />
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <!-- Supabase JS v2 -->
@@ -131,24 +131,52 @@
     }
 
     body.theme-blue-business {
-      --accent-primary: #2563eb;
-      --accent-hover: #1d4ed8;
-      --accent-soft: rgba(37, 99, 235, 0.15);
-      --accent-border: rgba(37, 99, 235, 0.4);
-      --bg-main: #0f172a;
-      --bg-surface: rgba(23, 35, 56, 0.94);
-      --bg-header: rgba(19, 30, 50, 0.90);
-      --bg-card: rgba(30, 41, 59, 0.90);
-      --bg-elevated: rgba(15, 23, 42, 0.96);
-      --text-main: #f8fafc;
-      --text-secondary: #cbd5e1;
-      --text-muted: #94a3b8;
-      --border-color: rgba(148, 163, 184, 0.18);
-      --input-bg: #090e17;
-      --header-shadow: 0 10px 30px -12px rgba(2, 6, 23, 0.75);
-      --card-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.45);
+      --accent-primary: #c8a45c;
+      --accent-hover: #b08d45;
+      --accent-soft: rgba(200, 164, 92, 0.12);
+      --accent-border: rgba(200, 164, 92, 0.38);
+      --bg-main: #0a1424;
+      --bg-surface: rgba(12, 24, 44, 0.97);
+      --bg-header: rgba(10, 20, 38, 0.97);
+      --bg-card: rgba(16, 30, 54, 0.96);
+      --bg-elevated: rgba(13, 26, 48, 0.98);
+      --text-main: #f4efe4;
+      --text-secondary: #cfd6e2;
+      --text-muted: #8b9ab3;
+      --border-color: rgba(200, 164, 92, 0.16);
+      --input-bg: #0b1629;
+      --header-shadow: 0 8px 24px -14px rgba(0, 0, 0, 0.7);
+      --card-shadow: 0 10px 26px -16px rgba(0, 0, 0, 0.7);
       background-color: var(--bg-main) !important;
-      background-image: radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.18), transparent 50%) !important;
+      background-image: linear-gradient(180deg, #0a1424 0%, #0d1b33 100%) !important;
+      color: var(--text-main) !important;
+    }
+
+    body.theme-neon-future {
+      --accent-primary: #00b4ff;
+      --accent-hover: #0090ff;
+      --accent-soft: rgba(0, 180, 255, 0.14);
+      --accent-border: rgba(0, 180, 255, 0.45);
+      --bg-main: #02040c;
+      --bg-surface: rgba(5, 12, 30, 0.72);
+      --bg-header: rgba(4, 10, 26, 0.72);
+      --bg-card: rgba(6, 16, 38, 0.62);
+      --bg-elevated: rgba(5, 13, 32, 0.92);
+      --text-main: #e6f4ff;
+      --text-secondary: #a9c8e6;
+      --text-muted: #6f8fb0;
+      --border-color: rgba(0, 170, 255, 0.22);
+      --input-bg: #040b1c;
+      --header-shadow: 0 0 28px -8px rgba(0, 180, 255, 0.5);
+      --card-shadow: 0 0 22px -10px rgba(0, 180, 255, 0.45);
+      background-color: var(--bg-main) !important;
+      background-image:
+        radial-gradient(circle at 12% 0%, rgba(0, 140, 255, 0.24), transparent 42%),
+        radial-gradient(circle at 92% 100%, rgba(0, 229, 255, 0.13), transparent 42%),
+        linear-gradient(rgba(0, 170, 255, 0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 170, 255, 0.055) 1px, transparent 1px) !important;
+      background-size: auto, auto, 38px 38px, 38px 38px !important;
+      background-attachment: fixed !important;
       color: var(--text-main) !important;
     }
 
@@ -395,6 +423,142 @@
       color: #0f172a !important;
     }
     body.theme-light-corporate .erp-dropdown-menu { box-shadow: 0 20px 45px -12px rgba(15, 23, 42, 0.18); }
+
+
+    /* ============================================================
+       LAYOUTS 2 a 5 — mudam estrutura e visual (o Layout 1 não é alterado)
+       ============================================================ */
+
+    /* ---------- LAYOUT 2: CORPORATE LIGHT (claro, menu lateral branco, cartões planos) ---------- */
+    body.theme-light-corporate { background-image: none !important; background-color: #f3f5f9 !important; }
+    body.theme-light-corporate .erp-header {
+      background: #ffffff; backdrop-filter: none; -webkit-backdrop-filter: none;
+      border-bottom: 1px solid #e3e8f0; box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+    }
+    body.theme-light-corporate #sidebar {
+      background: #ffffff; backdrop-filter: none; -webkit-backdrop-filter: none;
+      border-right: 1px solid #e3e8f0;
+    }
+    body.theme-light-corporate .nav-item { border-left: 0; border-radius: 0.55rem; font-weight: 500; }
+    body.theme-light-corporate .nav-item.active {
+      background: var(--accent-primary); color: #ffffff !important; font-weight: 600;
+      box-shadow: 0 6px 14px -8px var(--accent-primary);
+    }
+    body.theme-light-corporate .nav-item.active * { color: #ffffff !important; }
+    body.theme-light-corporate .erp-card {
+      backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0.75rem;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 16px -8px rgba(15, 23, 42, 0.10);
+    }
+    body.theme-light-corporate .kpi-card::before { height: 3px; opacity: 1; background: var(--accent-primary); }
+    body.theme-light-corporate .kpi-card:hover { transform: none; }
+    body.theme-light-corporate .btn-accent { background: var(--accent-primary); box-shadow: none; border-radius: 0.55rem; }
+    body.theme-light-corporate .erp-input { border-radius: 0.55rem; background: #ffffff; }
+    body.theme-light-corporate thead tr { background: #f8fafc; }
+    body.theme-light-corporate main h2 { letter-spacing: -0.01em; }
+
+    /* ---------- LAYOUT 3: GRAPHITE COMPACT (trilho de ícones, tudo mais denso) ---------- */
+    body.theme-graphite-emerald { background-image: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.10), transparent 50%) !important; }
+    body.theme-graphite-emerald .erp-header { height: 3.5rem !important; backdrop-filter: none; border-bottom: 1px solid var(--accent-border); }
+    body.theme-graphite-emerald .erp-card {
+      border-radius: 0.5rem; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none;
+    }
+    body.theme-graphite-emerald .kpi-card::before { height: 100%; width: 3px; inset: 0 auto 0 0; background: var(--accent-primary); opacity: 1; }
+    body.theme-graphite-emerald .kpi-card:hover { transform: none; }
+    body.theme-graphite-emerald .btn-accent { border-radius: 0.4rem; box-shadow: none; }
+    body.theme-graphite-emerald .erp-input, body.theme-graphite-emerald .erp-pill { border-radius: 0.4rem; }
+    body.theme-graphite-emerald main { padding: 1rem 1.25rem; }
+    body.theme-graphite-emerald main h2 { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; }
+    body.theme-graphite-emerald table td, body.theme-graphite-emerald table th {
+      padding-top: 0.5rem !important; padding-bottom: 0.5rem !important;
+    }
+    body.theme-graphite-emerald thead tr { background: rgba(16, 185, 129, 0.08); }
+
+    /* ---------- LAYOUT 4: EXECUTIVE NAVY (menu horizontal no topo, azul-marinho e dourado, títulos em serifa) ---------- */
+    body.theme-blue-business .erp-header { backdrop-filter: none; border-bottom: 1px solid var(--accent-border); }
+    body.theme-blue-business h1, body.theme-blue-business main h2, body.theme-blue-business main h3 {
+      font-family: Georgia, 'Times New Roman', serif; letter-spacing: 0.01em;
+    }
+    body.theme-blue-business main h2 { font-size: 1.6rem; font-weight: 700; }
+    body.theme-blue-business .erp-card {
+      border-radius: 0.35rem; backdrop-filter: none; -webkit-backdrop-filter: none;
+      border: 1px solid var(--border-color); border-top: 2px solid var(--accent-border);
+    }
+    body.theme-blue-business .kpi-card::before { display: none; }
+    body.theme-blue-business .kpi-card:hover { transform: none; border-color: var(--accent-border); }
+    body.theme-blue-business .btn-accent {
+      background: linear-gradient(135deg, #d6b56c, #b08d45); color: #0a1424 !important;
+      border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 0.35rem; box-shadow: none; font-weight: 700;
+    }
+    body.theme-blue-business .erp-input, body.theme-blue-business .erp-pill { border-radius: 0.35rem; }
+    body.theme-blue-business thead tr { background: rgba(200, 164, 92, 0.08); }
+    body.theme-blue-business thead th { color: #c8a45c; letter-spacing: 0.08em; }
+    body.theme-blue-business main > section { max-width: 1400px; margin-left: auto; margin-right: auto; width: 100%; }
+
+    @media (min-width: 1024px) {
+      body.theme-blue-business #sidebar-nav-wrapper { overflow-y: hidden; }
+      body.theme-blue-business #sidebar-nav-wrapper > * { margin-top: 0 !important; }
+      body.theme-blue-business #sidebar-nav-wrapper > div { display: flex; align-items: center; }
+      body.theme-blue-business #sidebar nav > * { margin-top: 0 !important; }
+      body.theme-blue-business #sidebar { background: #0c1a30; padding-top: 0.4rem; padding-bottom: 0.4rem; }
+      body.theme-blue-business #sidebar .nav-item { border-radius: 0.3rem; color: var(--text-secondary); }
+      body.theme-blue-business #sidebar .nav-item.active { background: transparent; border-bottom-color: var(--accent-primary); color: var(--accent-primary); }
+      body.theme-blue-business main { padding: 1.75rem 2rem; }
+    }
+
+    /* ---------- LAYOUT 5: NEON FUTURISTA (azul neon, painéis flutuantes de vidro com brilho) ---------- */
+    body.theme-neon-future h1, body.theme-neon-future main h2 {
+      font-family: 'Orbitron', 'Inter', sans-serif; letter-spacing: 0.04em; text-shadow: 0 0 14px rgba(0, 180, 255, 0.55);
+    }
+    body.theme-neon-future main h2 { font-size: 1.35rem; font-weight: 700; text-transform: uppercase; }
+    body.theme-neon-future .erp-header {
+      border: 1px solid var(--accent-border); border-radius: 1rem;
+      box-shadow: 0 0 0 1px rgba(0, 180, 255, 0.06), 0 0 26px -8px rgba(0, 180, 255, 0.55);
+    }
+    body.theme-neon-future #sidebar {
+      border: 1px solid var(--accent-border) !important; border-radius: 1.25rem;
+      box-shadow: 0 0 0 1px rgba(0, 180, 255, 0.06), 0 0 26px -10px rgba(0, 180, 255, 0.5);
+    }
+    body.theme-neon-future .nav-item { border-left: 0; border-radius: 0.8rem; }
+    body.theme-neon-future .nav-item:hover { background: rgba(0, 180, 255, 0.08); }
+    body.theme-neon-future .nav-item.active {
+      background: linear-gradient(90deg, rgba(0, 180, 255, 0.26), rgba(0, 180, 255, 0.02));
+      box-shadow: inset 0 0 0 1px rgba(0, 180, 255, 0.4), 0 0 18px -6px rgba(0, 180, 255, 0.8);
+      color: #ffffff; text-shadow: 0 0 10px rgba(0, 200, 255, 0.9);
+    }
+    body.theme-neon-future .erp-card {
+      border: 1px solid var(--border-color); border-radius: 1.1rem;
+      box-shadow: inset 0 0 0 1px rgba(0, 180, 255, 0.04), var(--card-shadow);
+    }
+    body.theme-neon-future .erp-card:hover { border-color: var(--accent-border); }
+    body.theme-neon-future .kpi-card::before {
+      height: 2px; opacity: 1; box-shadow: 0 0 12px 1px var(--accent-primary);
+      background: linear-gradient(90deg, transparent, #00e5ff, var(--accent-primary), transparent);
+    }
+    body.theme-neon-future .kpi-card [class*="text-2xl"], body.theme-neon-future .kpi-card [class*="text-xl"] {
+      font-family: 'Orbitron', 'Inter', sans-serif; letter-spacing: 0.02em; text-shadow: 0 0 12px rgba(0, 180, 255, 0.5);
+    }
+    body.theme-neon-future .btn-accent {
+      background: linear-gradient(135deg, #00c8ff, #0066ff); border: 1px solid rgba(120, 220, 255, 0.55);
+      box-shadow: 0 0 20px -2px rgba(0, 180, 255, 0.75), inset 0 0 10px rgba(255, 255, 255, 0.12);
+      text-shadow: 0 0 8px rgba(0, 40, 90, 0.6); letter-spacing: 0.02em;
+    }
+    body.theme-neon-future .btn-accent:hover { box-shadow: 0 0 28px 0 rgba(0, 200, 255, 0.95); }
+    body.theme-neon-future .erp-pill:hover { box-shadow: 0 0 14px -4px rgba(0, 180, 255, 0.7); }
+    body.theme-neon-future .erp-input { border-radius: 0.8rem; border-color: rgba(0, 170, 255, 0.28); }
+    body.theme-neon-future .erp-input:focus { border-color: #00c8ff; box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.22), 0 0 16px -2px rgba(0, 180, 255, 0.7); }
+    body.theme-neon-future thead tr { background: rgba(0, 150, 255, 0.10); }
+    body.theme-neon-future thead th { color: #5fd0ff; letter-spacing: 0.1em; }
+    body.theme-neon-future tbody tr:hover { background: rgba(0, 180, 255, 0.07) !important; }
+    body.theme-neon-future .badge-accent { box-shadow: 0 0 12px -4px var(--accent-primary); }
+    body.theme-neon-future ::-webkit-scrollbar { width: 9px; height: 9px; }
+    body.theme-neon-future ::-webkit-scrollbar-thumb { background: rgba(0, 180, 255, 0.35); border-radius: 8px; }
+    body.theme-neon-future ::-webkit-scrollbar-track { background: transparent; }
+
+    @media (min-width: 1024px) {
+      body.theme-neon-future .erp-header { margin: 0.75rem 0.75rem 0; top: 0.75rem; }
+      body.theme-neon-future #app-shell { padding: 0.75rem 0 0 0.75rem; }
+      body.theme-neon-future main { padding-top: 0.5rem; }
+    }
 
     body.security-blurred #app-shell,
     body.security-blurred header,
@@ -698,17 +862,17 @@
               <button type="button" onclick="quickSwitchLayout('theme-dark-premium')" title="1. Dark Premium" class="h-7 rounded-lg border border-slate-600/60 bg-[#0b1120] flex items-center justify-center hover:scale-105 transition">
                 <span class="w-3 h-3 rounded-full bg-[#3b82f6]"></span>
               </button>
-              <button type="button" onclick="quickSwitchLayout('theme-light-corporate')" title="2. Light Corporate" class="h-7 rounded-lg border border-slate-300 bg-white flex items-center justify-center hover:scale-105 transition">
+              <button type="button" onclick="quickSwitchLayout('theme-light-corporate')" title="2. Corporate Light" class="h-7 rounded-lg border border-slate-300 bg-white flex items-center justify-center hover:scale-105 transition">
                 <span class="w-3 h-3 rounded-full bg-[#0284c7]"></span>
               </button>
-              <button type="button" onclick="quickSwitchLayout('theme-graphite-emerald')" title="3. Graphite Emerald" class="h-7 rounded-lg border border-slate-600/60 bg-[#161b22] flex items-center justify-center hover:scale-105 transition">
+              <button type="button" onclick="quickSwitchLayout('theme-graphite-emerald')" title="3. Graphite Compact" class="h-7 rounded-lg border border-slate-600/60 bg-[#161b22] flex items-center justify-center hover:scale-105 transition">
                 <span class="w-3 h-3 rounded-full bg-[#10b981]"></span>
               </button>
-              <button type="button" onclick="quickSwitchLayout('theme-blue-business')" title="4. Blue Business" class="h-7 rounded-lg border border-blue-500/40 bg-[#172338] flex items-center justify-center hover:scale-105 transition">
-                <span class="w-3 h-3 rounded-full bg-[#2563eb]"></span>
+              <button type="button" onclick="quickSwitchLayout('theme-blue-business')" title="4. Executive Navy" class="h-7 rounded-lg border border-blue-500/40 bg-[#172338] flex items-center justify-center hover:scale-105 transition">
+                <span class="w-3 h-3 rounded-full bg-[#c8a45c]"></span>
               </button>
-              <button type="button" onclick="quickSwitchLayout('theme-midnight-orange')" title="5. Midnight Orange" class="h-7 rounded-lg border border-orange-500/40 bg-[#18181b] flex items-center justify-center hover:scale-105 transition">
-                <span class="w-3 h-3 rounded-full bg-[#f97316]"></span>
+              <button type="button" onclick="quickSwitchLayout('theme-neon-future')" title="5. Neon Futurista" class="h-7 rounded-lg border border-cyan-400/50 bg-[#02040c] flex items-center justify-center hover:scale-105 transition">
+                <span class="w-3 h-3 rounded-full bg-[#00b4ff]" style="box-shadow:0 0 8px #00b4ff"></span>
               </button>
             </div>
           </div>
@@ -2515,11 +2679,11 @@
       ];
 
       const UI_LAYOUTS = [
-        { id: 'theme-dark-premium', name: '1. Dark Premium', short: 'Dark Premium', desc: 'Layout escuro refinado com alta sofisticação', defaultPalette: 'blue' },
-        { id: 'theme-light-corporate', name: '2. Light Corporate', short: 'Light Corporate', desc: 'Interface clara, fundo branco, detalhes em azul corporativo', defaultPalette: 'blue' },
-        { id: 'theme-graphite-emerald', name: '3. Graphite Emerald', short: 'Graphite Emerald', desc: 'Interface em grafite com verde esmeralda corporativo', defaultPalette: 'emerald' },
-        { id: 'theme-blue-business', name: '4. Blue Business', short: 'Blue Business', desc: 'Visual moderno com tons de azul e cinza empresarial', defaultPalette: 'blue' },
-        { id: 'theme-midnight-orange', name: '5. Midnight Orange', short: 'Midnight Orange', desc: 'Visual escuro tecnológico com detalhes em laranja vibrante', defaultPalette: 'orange' }
+        { id: 'theme-dark-premium', name: '1. Dark Premium (Padrão)', short: 'Dark Premium', desc: 'Layout padrão: escuro refinado com menu lateral', defaultPalette: 'blue' },
+        { id: 'theme-light-corporate', name: '2. Corporate Light', short: 'Corporate Light', desc: 'Claro e limpo: menu lateral branco, cartões planos e visual de escritório', defaultPalette: 'blue' },
+        { id: 'theme-graphite-emerald', name: '3. Graphite Compact', short: 'Graphite Compact', desc: 'Compacto: menu só com ícones, tabelas densas e verde esmeralda', defaultPalette: 'emerald' },
+        { id: 'theme-blue-business', name: '4. Executive Navy', short: 'Executive Navy', desc: 'Elegante: menu no topo, azul-marinho com dourado e títulos clássicos', defaultPalette: 'champagne' },
+        { id: 'theme-neon-future', name: '5. Neon Futurista', short: 'Neon Futurista', desc: 'Futurista: azul neon, painéis flutuantes de vidro e brilho tecnológico', defaultPalette: 'neon' }
       ];
 
       const THEME_PALETTES = [
@@ -2528,7 +2692,9 @@
         { id: 'emerald', name: 'Verde Floresta', primary: '#10b981', hover: '#059669' },
         { id: 'orange', name: 'Laranja Solar', primary: '#f97316', hover: '#ea580c' },
         { id: 'violet', name: 'Roxo Ametista', primary: '#8b5cf6', hover: '#7c3aed' },
-        { id: 'cyan', name: 'Oceano Profundo', primary: '#06b6d4', hover: '#0891b2' }
+        { id: 'cyan', name: 'Oceano Profundo', primary: '#06b6d4', hover: '#0891b2' },
+        { id: 'champagne', name: 'Champagne Executivo', primary: '#c8a45c', hover: '#b08d45' },
+        { id: 'neon', name: 'Azul Neon', primary: '#00b4ff', hover: '#0090ff' }
       ];
 
       let cartItems = [];
@@ -4024,7 +4190,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       function updateStoreBrandUI() {
         const storeName = appState.store?.name || 'Eletro Shop';
         const iconObj = NICHE_ICONS.find(i => i.id === (appState.store?.iconId || 'eletrica')) || NICHE_ICONS[0];
-        const layoutId = appState.store?.layoutId || 'theme-dark-premium';
+        const savedLayoutId = appState.store?.layoutId || 'theme-dark-premium';
+        const layoutId = UI_LAYOUTS.some(l => l.id === savedLayoutId) ? savedLayoutId : 'theme-dark-premium';
         const layoutObj = UI_LAYOUTS.find(l => l.id === layoutId) || UI_LAYOUTS[0];
         const palObj = THEME_PALETTES.find(p => p.id === (appState.store?.paletteId || 'blue')) || THEME_PALETTES[0];
         const customColor = appState.store?.badgeColor || palObj.primary;
