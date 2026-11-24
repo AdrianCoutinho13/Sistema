@@ -7147,7 +7147,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           const successBox = document.getElementById('pub-cat-success-box');
           const successText = document.getElementById('pub-cat-success-text');
           if (successText) {
-            successText.innerHTML = `Olá <strong>${escapeHtmlStr(customerName)}</strong>! Seu pedido <strong>${orderId}</strong> no valor de <strong>${formatBRL(verifiedTotal)}</strong> foi registrado para separação na loja <strong>${escapeHtmlStr(appState.store?.name || 'Eletro Shop')}</strong>.${!sentToCloud && lastCloudError ? '<br><span class="text-[11px] text-amber-300">(Modo local ativo — clique em "Enviar via WhatsApp" abaixo se desejar agilizar o atendimento)</span>' : ''}`;
+            successText.innerHTML = `Olá <strong>${escapeHtmlStr(customerName)}</strong>! Seu pedido <strong>${orderId}</strong> no valor de <strong>${formatBRL(verifiedTotal)}</strong> foi registrado para separação na loja <strong>${escapeHtmlStr(appState.store?.name || 'Eletro Shop')}</strong>.${!sentToCloud ? '<br><span class="text-[12px] font-bold text-amber-300">⚠️ Não conseguimos enviar o pedido ao sistema da loja. Clique em "Enviar via WhatsApp" abaixo para garantir que a loja receba seu pedido.</span>' : ''}`;
+          if (!sentToCloud) { try { console.error('Falha ao enviar pedido ao Supabase:', lastCloudError); } catch (e) {} }
           }
           successBox?.classList.remove('hidden');
           showToast(`Pedido ${orderId} enviado com sucesso!`);
@@ -7408,6 +7409,19 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         } catch (e) {}
       }
 
+      document.addEventListener('visibilitychange', async function () {
+        if (document.visibilityState !== 'visible' || !currentUser || securityViolated || isPublicCatalogViewActive) return;
+        const prevIds = new Set((appState.catalogOrders || []).map(o => o.id));
+        await mergePublicOrdersFromIsolatedTable();
+        const novos = (appState.catalogOrders || []).filter(o => !prevIds.has(o.id) && o.status === 'Aguardando Separação');
+        if (novos.length > 0) {
+          playNewOrderAlertBeep(5);
+          updateDashboardKPIs();
+          if (!document.getElementById('view-catalogo')?.classList.contains('hidden')) renderCatalogAdminSection();
+          showToast(`Novo pedido recebido no Catálogo Online: ${novos[0].customer} (${formatBRL(novos[0].total)})!`);
+        }
+      });
+
       function startCatalogOrdersRealtimeMonitor() {
         knownCatalogOrderIds = new Set((appState.catalogOrders || []).map(o => o.id));
         if (catalogOrderPollTimer) clearInterval(catalogOrderPollTimer);
@@ -7425,7 +7439,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
             }
             showToast(`Novo pedido recebido no Catálogo Online: ${newOrders[0].customer} (${formatBRL(newOrders[0].total)})!`);
           }
-        }, 12000);
+        }, 8000);
       }
 
       /* ==================== INICIALIZAÇÃO GERAL DO SISTEMA ==================== */
