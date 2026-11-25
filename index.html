@@ -2425,22 +2425,22 @@
   </div>
 
   <!-- ==================== WIDGET FLUTUANTE WHATSAPP WEB ==================== -->
-  <button id="wa-floating-launcher" type="button" onclick="toggleWhatsAppWidget()" title="Atendimento WhatsApp Web da Loja"
-    class="fixed bottom-5 right-5 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-2xl shadow-emerald-950/80 transition-transform hover:scale-105">
+  <button id="wa-floating-launcher" type="button" onclick="waLauncherClick()" title="WhatsApp da Loja (arraste para mover)"
+    class="fixed bottom-5 right-5 z-[55] flex items-center gap-2.5 px-4 py-3 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-2xl shadow-emerald-950/80 transition-transform hover:scale-105">
     <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824zM12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.978-1.418A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
     <span>WhatsApp Loja</span>
   </button>
 
-  <div id="wa-floating-panel" class="hidden fixed bottom-20 right-5 z-40 w-[370px] max-w-[calc(100vw-2rem)] erp-card border border-emerald-500/35 shadow-2xl overflow-hidden flex flex-col">
-    <div class="px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
+  <div id="wa-floating-panel" class="hidden fixed bottom-20 right-5 z-[55] w-[370px] max-w-[calc(100vw-2rem)] erp-card border border-emerald-500/35 shadow-2xl overflow-hidden flex flex-col">
+    <div id="wa-panel-header" class="px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between cursor-move select-none" title="Arraste para mover">
       <div class="flex items-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
         <div>
           <div class="keep-white text-xs font-extrabold leading-tight text-white">WhatsApp Web • Atendimento</div>
-          <div class="text-[10px] text-emerald-100 leading-tight">Janela acoplada sem trocar de aba</div>
+          <div class="text-[10px] text-emerald-100 leading-tight">Arraste esta barra para mover o painel</div>
         </div>
       </div>
-      <button type="button" onclick="toggleWhatsAppWidget(false)" class="keep-white text-white/80 hover:text-white text-lg font-bold leading-none">&times;</button>
+      <button type="button" data-wa-nodrag="1" onclick="toggleWhatsAppWidget(false)" class="keep-white text-white/80 hover:text-white text-lg font-bold leading-none">&times;</button>
     </div>
 
     <div class="grid grid-cols-2 border-b border-slate-800 bg-slate-900/90 text-[11px] font-bold">
@@ -2453,9 +2453,12 @@
         <div class="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 mx-auto flex items-center justify-center">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
         </div>
-        <h4 class="text-xs font-extrabold text-white">Mini-Janela Flutuante WhatsApp Web</h4>
+        <h4 class="text-xs font-extrabold text-white">WhatsApp Web da loja</h4>
         <p class="text-[11px] text-slate-400 leading-relaxed">
-          Abre o WhatsApp Web da loja acoplado no canto direito da tela e o traz para frente sempre que clicar, mantendo o QR Code conectado.
+          Abre o WhatsApp Web em uma janela pequena no canto da tela e a traz para frente sempre que clicar. O WhatsApp não permite ser exibido dentro de outro site, por isso ele abre separado.
+        </p>
+        <p class="text-[10px] text-slate-500 leading-relaxed">
+          Dica (Windows): clique na janela do WhatsApp e aperte <strong>Win + Ctrl + T</strong> (PowerToys "Sempre no topo") para ela ficar sempre por cima do sistema.
         </p>
         <button type="button" onclick="openDockedWhatsAppWindow()" class="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-lg transition">
           Abrir / Trazer WhatsApp Web
@@ -6996,7 +6999,112 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         if (!panel) return;
         const open = typeof forceState === 'boolean' ? forceState : panel.classList.contains('hidden');
         panel.classList.toggle('hidden', !open);
-        if (open) populateEntitySelects();
+        if (open) {
+          populateEntitySelects();
+          waPositionPanelOnOpen();
+        }
+      }
+
+      /* ---------- Botão e painel do WhatsApp arrastáveis ---------- */
+      let waSuppressClick = false;
+      const WA_POS_KEY = 'erp_wa_float_positions';
+
+      function waLoadPositions() {
+        try { return JSON.parse(localStorage.getItem(WA_POS_KEY) || '{}') || {}; } catch (e) { return {}; }
+      }
+      function waSavePosition(name, pos) {
+        try {
+          const all = waLoadPositions();
+          all[name] = pos;
+          localStorage.setItem(WA_POS_KEY, JSON.stringify(all));
+        } catch (e) { /* sem armazenamento: apenas não lembra a posição */ }
+      }
+      function waClampAndApply(el, left, top) {
+        const w = el.offsetWidth || 60;
+        const h = el.offsetHeight || 40;
+        const L = Math.min(Math.max(0, left), Math.max(0, window.innerWidth - w));
+        const T = Math.min(Math.max(0, top), Math.max(0, window.innerHeight - h));
+        el.style.left = L + 'px';
+        el.style.top = T + 'px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+        return { left: L, top: T };
+      }
+      function waLauncherClick() {
+        if (waSuppressClick) return;
+        toggleWhatsAppWidget();
+      }
+      function waMakeDraggable(el, handle, name) {
+        if (!el || !handle) return;
+        handle.style.touchAction = 'none';
+        let startX = 0, startY = 0, startL = 0, startT = 0, moved = false, active = false;
+        handle.addEventListener('pointerdown', (e) => {
+          if (e.button !== undefined && e.button !== 0) return;
+          if (e.target.closest && e.target.closest('[data-wa-nodrag]')) return;
+          const r = el.getBoundingClientRect();
+          active = true; moved = false;
+          startX = e.clientX; startY = e.clientY; startL = r.left; startT = r.top;
+          try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+        });
+        handle.addEventListener('pointermove', (e) => {
+          if (!active) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          if (!moved && Math.abs(dx) + Math.abs(dy) < 5) return;
+          moved = true;
+          waClampAndApply(el, startL + dx, startT + dy);
+        });
+        const end = (e) => {
+          if (!active) return;
+          active = false;
+          try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+          if (moved) {
+            const r = el.getBoundingClientRect();
+            waSavePosition(name, { left: r.left, top: r.top });
+            waSuppressClick = true;
+            setTimeout(() => { waSuppressClick = false; }, 120);
+          }
+        };
+        handle.addEventListener('pointerup', end);
+        handle.addEventListener('pointercancel', end);
+      }
+      function waPositionPanelOnOpen() {
+        const panel = document.getElementById('wa-floating-panel');
+        const launcher = document.getElementById('wa-floating-launcher');
+        if (!panel) return;
+        const saved = waLoadPositions();
+        if (saved.panel) {
+          waClampAndApply(panel, saved.panel.left, saved.panel.top);
+        } else if (saved.launcher && launcher) {
+          /* painel ainda sem posição própria: abre perto do botão que foi movido */
+          const lr = launcher.getBoundingClientRect();
+          const pw = panel.offsetWidth || 370;
+          const ph = panel.offsetHeight || 380;
+          const top = (lr.top - ph - 10 >= 0) ? (lr.top - ph - 10) : (lr.bottom + 10);
+          waClampAndApply(panel, lr.right - pw, top);
+        }
+      }
+      function initWhatsAppDrag() {
+        const launcher = document.getElementById('wa-floating-launcher');
+        const panel = document.getElementById('wa-floating-panel');
+        const header = document.getElementById('wa-panel-header');
+        const saved = waLoadPositions();
+        if (launcher && saved.launcher) waClampAndApply(launcher, saved.launcher.left, saved.launcher.top);
+        waMakeDraggable(launcher, launcher, 'launcher');
+        waMakeDraggable(panel, header, 'panel');
+        window.addEventListener('resize', () => {
+          [launcher, panel].forEach(el => {
+            if (el && el.style.left) {
+              const r = el.getBoundingClientRect();
+              waClampAndApply(el, r.left, r.top);
+            }
+          });
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initWhatsAppDrag);
+      } else {
+        initWhatsAppDrag();
       }
 
       function switchWhatsAppWidgetTab(tab) {
@@ -7010,11 +7118,11 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       }
 
       function openDockedWhatsAppWindow(customUrl = 'https://web.whatsapp.com') {
-        const width = 460;
-        const height = Math.min(760, window.screen.availHeight - 60);
+        const width = 440;
+        const height = Math.min(700, window.screen.availHeight - 60);
         const left = Math.max(0, window.screen.availWidth - width - 20);
-        const top = 40;
-        const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+        const top = Math.max(0, window.screen.availHeight - height - 30);
+        const features = `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
 
         if (waDockedWindowRef && !waDockedWindowRef.closed) {
           if (customUrl !== 'https://web.whatsapp.com') {
@@ -8125,6 +8233,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         saveAIQuoteDirectly,
         printAIQuoteDirectly,
         toggleWhatsAppWidget,
+        waLauncherClick,
         switchWhatsAppWidgetTab,
         openDockedWhatsAppWindow,
         onSelectWhatsAppCustomer,
