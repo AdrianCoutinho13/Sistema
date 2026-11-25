@@ -1385,6 +1385,10 @@
 
             <div class="space-y-2">
               <button type="button" onclick="completePDVSale()" class="btn-accent w-full py-2.5 text-xs font-bold shadow-lg">Finalizar Venda</button>
+              <label class="flex items-center gap-2 text-[11px] text-slate-400 cursor-pointer select-none">
+                <input type="checkbox" class="auto-receipt-check" onchange="setAutoReceipt(this.checked)" />
+                Imprimir cupom não fiscal automaticamente ao finalizar
+              </label>
               <div class="grid grid-cols-2 gap-2">
                 <button type="button" onclick="savePDVAsQuote()" class="py-2.5 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-xs font-bold text-amber-400 flex items-center justify-center gap-1.5 transition">
                   <span>Salvar Orçamento</span>
@@ -2379,6 +2383,14 @@
         <div>
           <label for="store-cnpj-input" class="block text-xs font-semibold text-slate-300 mb-1">CNPJ (para Orçamentos & PDF)</label>
           <input type="text" id="store-cnpj-input" placeholder="00.000.000/0001-00" class="erp-input w-full px-3 py-2 text-xs font-mono" />
+        </div>
+        <div>
+          <label for="store-phone-input" class="block text-xs font-semibold text-slate-300 mb-1">Telefone (para o cupom)</label>
+          <input type="text" id="store-phone-input" placeholder="(19) 99999-9999" class="erp-input w-full px-3 py-2 text-xs" />
+        </div>
+        <div>
+          <label for="store-address-input" class="block text-xs font-semibold text-slate-300 mb-1">Endereço (para o cupom)</label>
+          <input type="text" id="store-address-input" placeholder="Rua, número, bairro, cidade" class="erp-input w-full px-3 py-2 text-xs" />
         </div>
       </div>
 
@@ -4160,6 +4172,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         if (!isMasterAdmin()) return showToast('Apenas o Master Admin pode alterar a identidade da loja.', true);
         document.getElementById('store-name-input').value = appState.store.name || 'Eletro Shop';
         document.getElementById('store-cnpj-input').value = appState.store.cnpj || '';
+        document.getElementById('store-phone-input').value = appState.store.phone || '';
+        document.getElementById('store-address-input').value = appState.store.address || '';
         selectedNicheIconId = appState.store.iconId || 'eletrica';
         selectedLayoutId = appState.store.layoutId || 'theme-dark-premium';
         selectedPaletteId = appState.store.paletteId || 'blue';
@@ -4179,6 +4193,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         if (!newName) return showToast('Informe o nome da loja.', true);
         appState.store.name = newName;
         appState.store.cnpj = (document.getElementById('store-cnpj-input').value || '').trim();
+        appState.store.phone = (document.getElementById('store-phone-input').value || '').trim();
+        appState.store.address = (document.getElementById('store-address-input').value || '').trim();
         appState.store.iconId = selectedNicheIconId;
         appState.store.layoutId = selectedLayoutId;
         appState.store.paletteId = selectedPaletteId;
@@ -5318,6 +5334,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         const { subtotal, discountAmount, total } = calculatePDVCartTotals();
         const nowStr = new Date().toLocaleString('pt-BR');
         const saleId = 'VND-' + Date.now().toString().slice(-6);
+        const cashReceivedVal = payment === 'Dinheiro' ? (parseFloat(document.getElementById('pdv-cash-received')?.value) || 0) : 0;
 
         if (payment === 'Dinheiro') {
           const received = parseFloat(document.getElementById('pdv-cash-received')?.value) || 0;
@@ -5339,7 +5356,9 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           items: JSON.parse(JSON.stringify(cartItems)),
           subtotal,
           discount: discountAmount,
-          total
+          total,
+          cashReceived: cashReceivedVal,
+          change: cashReceivedVal > total ? Math.round((cashReceivedVal - total) * 100) / 100 : 0
         });
 
         const txDesc = discountAmount > 0
@@ -5366,6 +5385,138 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         showToast(linkedCatalogOrderId
           ? `Venda ${saleId} concluída! Pedido ${linkedCatalogOrderId} marcado como Faturado.`
           : `Venda ${saleId} concluída no valor de ${formatBRL(total)}!`);
+        offerReceiptAfterSale(saleId);
+      }
+
+      /* ==================== CUPOM NÃO FISCAL ==================== */
+      const AUTO_RECEIPT_KEY = 'erp_auto_receipt';
+      function getAutoReceipt() {
+        try { return localStorage.getItem(AUTO_RECEIPT_KEY) === '1'; } catch (e) { return false; }
+      }
+      function setAutoReceipt(on) {
+        try { localStorage.setItem(AUTO_RECEIPT_KEY, on ? '1' : '0'); } catch (e) {}
+        document.querySelectorAll('.auto-receipt-check').forEach(c => { c.checked = !!on; });
+      }
+
+      function printHtmlInHiddenFrame(html) {
+        document.getElementById('print-frame-hidden')?.remove();
+        const f = document.createElement('iframe');
+        f.id = 'print-frame-hidden';
+        f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+        document.body.appendChild(f);
+        const doc = f.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+        setTimeout(() => {
+          try {
+            f.contentWindow.focus();
+            f.contentWindow.print();
+          } catch (e) {
+            showToast('Não foi possível abrir a impressão. Verifique o bloqueador do navegador.', true);
+          }
+        }, 300);
+        setTimeout(() => f.remove(), 120000);
+      }
+
+      function printSaleReceipt(saleId) {
+        const sale = (appState.sales || []).find(x => x.id === saleId);
+        if (!sale) return showToast('Venda não encontrada para emitir o cupom.', true);
+        const st = appState.store || {};
+        const storeName = st.name || 'Loja';
+        const items = Array.isArray(sale.items) ? sale.items : [];
+        const subtotal = Number(sale.subtotal != null ? sale.subtotal : items.reduce((a, it) => a + Number(it.price || 0) * Number(it.qty || 0), 0));
+        const discount = Number(sale.discount || 0);
+        const total = Number(sale.total || 0);
+        const received = Number(sale.cashReceived || 0);
+        const change = Number(sale.change || 0);
+
+        const lines = items.map((it, i) => {
+          const qty = Number(it.qty || 0);
+          const price = Number(it.price || 0);
+          return `
+            <div class="item">${String(i + 1).padStart(2, '0')} ${escapeHtmlStr(it.name)}</div>
+            <div class="row"><span>${qty} x ${formatBRL(price)}</span><span>${formatBRL(qty * price)}</span></div>`;
+        }).join('');
+
+        const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Cupom ${escapeHtmlStr(sale.id)}</title>
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  * { box-sizing: border-box; }
+  body { width: 72mm; margin: 0 auto; padding: 4mm 0 8mm; font-family: 'Courier New', Courier, monospace; font-size: 11px; line-height: 1.35; color: #000; background: #fff; }
+  .c { text-align: center; }
+  .b { font-weight: bold; }
+  .big { font-size: 15px; }
+  .sm { font-size: 9px; }
+  .sep { border-top: 1px dashed #000; margin: 5px 0; }
+  .row { display: flex; justify-content: space-between; gap: 6px; }
+  .item { margin-top: 3px; word-break: break-word; }
+  .tot { font-size: 14px; font-weight: bold; margin-top: 2px; }
+</style></head>
+<body>
+  <div class="c b big">${escapeHtmlStr(storeName)}</div>
+  ${st.cnpj ? `<div class="c sm">CNPJ: ${escapeHtmlStr(st.cnpj)}</div>` : ''}
+  ${st.address ? `<div class="c sm">${escapeHtmlStr(st.address)}</div>` : ''}
+  ${st.phone ? `<div class="c sm">Tel.: ${escapeHtmlStr(st.phone)}</div>` : ''}
+  <div class="sep"></div>
+  <div class="c b">CUPOM NÃO FISCAL</div>
+  <div class="c sm">Documento sem valor fiscal</div>
+  <div class="sep"></div>
+  <div class="row"><span>Venda:</span><span class="b">${escapeHtmlStr(sale.id)}</span></div>
+  <div class="row"><span>Data:</span><span>${escapeHtmlStr(sale.date || '')}</span></div>
+  <div>Cliente: ${escapeHtmlStr(sale.customer || 'Consumidor Final')}</div>
+  <div class="sep"></div>
+  ${lines || '<div class="c">Sem itens</div>'}
+  <div class="sep"></div>
+  <div class="row"><span>Subtotal</span><span>${formatBRL(subtotal)}</span></div>
+  ${discount > 0 ? `<div class="row"><span>Desconto</span><span>- ${formatBRL(discount)}</span></div>` : ''}
+  <div class="row tot"><span>TOTAL</span><span>${formatBRL(total)}</span></div>
+  <div class="sep"></div>
+  <div class="row"><span>Pagamento</span><span>${escapeHtmlStr(sale.payment || '')}</span></div>
+  ${received > 0 ? `<div class="row"><span>Valor recebido</span><span>${formatBRL(received)}</span></div>` : ''}
+  ${change > 0 ? `<div class="row b"><span>Troco</span><span>${formatBRL(change)}</span></div>` : ''}
+  <div class="sep"></div>
+  <div class="c b">Obrigado pela preferência!</div>
+  <div class="c sm">Volte sempre</div>
+</body></html>`;
+        printHtmlInHiddenFrame(html);
+      }
+
+      function closeReceiptDialog() {
+        document.getElementById('receipt-dialog')?.remove();
+      }
+
+      function offerReceiptAfterSale(saleId) {
+        const sale = (appState.sales || []).find(x => x.id === saleId);
+        if (!sale) return;
+        if (getAutoReceipt()) {
+          printSaleReceipt(saleId);
+          return;
+        }
+        closeReceiptDialog();
+        const change = Number(sale.change || 0);
+        const wrap = document.createElement('div');
+        wrap.id = 'receipt-dialog';
+        wrap.className = 'fixed inset-0 z-[90] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4';
+        wrap.innerHTML = `
+          <div class="w-full max-w-sm erp-card p-5 space-y-3 text-center">
+            <div class="mx-auto w-11 h-11 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl font-bold">✓</div>
+            <div>
+              <h3 class="text-base font-extrabold text-white">Venda concluída!</h3>
+              <p class="text-xs text-slate-400 mt-0.5">${escapeHtmlStr(sale.id)} • ${formatBRL(sale.total)}</p>
+              ${change > 0 ? `<p class="text-sm font-extrabold text-amber-300 mt-1">Troco: ${formatBRL(change)}</p>` : ''}
+            </div>
+            <button type="button" id="receipt-print-btn" onclick="printSaleReceipt('${escapeHtmlStr(sale.id)}'); closeReceiptDialog();" class="btn-accent w-full py-2.5 text-xs font-bold">Emitir cupom não fiscal</button>
+            <button type="button" onclick="closeReceiptDialog()" class="w-full py-2 rounded-xl erp-pill text-xs font-semibold">Fechar sem imprimir</button>
+            <label class="flex items-center justify-center gap-2 text-[11px] text-slate-400 cursor-pointer select-none">
+              <input type="checkbox" class="auto-receipt-check" onchange="setAutoReceipt(this.checked)" />
+              Imprimir automaticamente nas próximas vendas
+            </label>
+          </div>`;
+        wrap.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeReceiptDialog(); });
+        document.body.appendChild(wrap);
+        document.getElementById('receipt-print-btn')?.focus();
       }
 
       /* ==================== MÓDULO DEDICADO DE ORÇAMENTOS COMERCIAIS ==================== */
@@ -6148,6 +6299,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
                   <td class="py-3 px-3 text-slate-300 max-w-xs truncate" title="${escapeHtmlStr(itemsDesc)}">${escapeHtmlStr(itemsDesc)}</td>
                   <td class="py-3 px-3 text-right font-extrabold text-emerald-400 tabular-nums">${formatBRL(s.total)}</td>
                   <td class="py-3 px-3 text-right space-x-1 whitespace-nowrap">
+                    <button type="button" onclick="printSaleReceipt('${escapeHtmlStr(s.id)}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold">Cupom</button>
                     <button type="button" onclick="openEditSaleModal('${escapeHtmlStr(s.id)}')" class="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 font-bold">Editar Qtd/Itens</button>
                     <button type="button" onclick="deleteSaleRecord('${escapeHtmlStr(s.id)}')" class="px-2 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 font-semibold">Excluir</button>
                   </td>
@@ -7084,7 +7236,12 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           waClampAndApply(panel, lr.right - pw, top);
         }
       }
+      function syncAutoReceiptChecks() {
+        document.querySelectorAll('.auto-receipt-check').forEach(c => { c.checked = getAutoReceipt(); });
+      }
+
       function initWhatsAppDrag() {
+        syncAutoReceiptChecks();
         const launcher = document.getElementById('wa-floating-launcher');
         const panel = document.getElementById('wa-floating-panel');
         const header = document.getElementById('wa-panel-header');
@@ -8234,6 +8391,9 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         printAIQuoteDirectly,
         toggleWhatsAppWidget,
         waLauncherClick,
+        printSaleReceipt,
+        closeReceiptDialog,
+        setAutoReceipt,
         switchWhatsAppWidgetTab,
         openDockedWhatsAppWindow,
         onSelectWhatsAppCustomer,
