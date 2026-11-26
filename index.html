@@ -9,6 +9,9 @@
   <title>ARC Tech ERP v4.4 Shield Pro • Gestão & Controle Protegido</title>
 
   <meta name="theme-color" content="#3b82f6" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
@@ -724,7 +727,8 @@
   <div id="cloud-login-overlay" class="fixed inset-0 z-[80] flex items-center justify-center bg-[#060a12]/95 backdrop-blur-md p-4">
     <div class="w-full max-w-md erp-card p-6 sm:p-8 space-y-6 border border-slate-800 shadow-2xl">
       <div class="text-center space-y-2.5">
-        <div id="login-brand-icon" class="keep-white w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-white shadow-lg" style="background: var(--accent-primary);">
+        <img id="login-brand-logo" src="logo-arc-tech.png" alt="ARC Tech" class="mx-auto h-32 w-auto object-contain select-none" draggable="false" onerror="this.style.display='none'; document.getElementById('login-brand-icon').style.display='flex';" />
+        <div id="login-brand-icon" class="keep-white w-12 h-12 rounded-2xl mx-auto items-center justify-center text-white shadow-lg" style="background: var(--accent-primary); display: none;">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
         <h2 id="login-store-title" data-fixed-system-name="true" class="text-xl font-extrabold text-white tracking-tight">ARC Tech ERP Pro</h2>
@@ -883,6 +887,11 @@
               <span>Identidade & Tema da Loja</span>
             </button>
 
+            <button type="button" id="install-app-btn" onclick="closeProfileMenu(); installApp()" class="hidden w-full text-left px-4 py-2 text-xs hover:bg-sky-500/10 flex items-center gap-2.5 transition font-medium" style="color: var(--text-secondary);">
+              <svg class="w-4 h-4 shrink-0" style="color: var(--accent-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+              <span>Instalar aplicativo</span>
+            </button>
+
             <button type="button" onclick="closeProfileMenu(); openChangePasswordModal({ self: true })" class="w-full text-left px-4 py-2 text-xs hover:bg-sky-500/10 flex items-center gap-2.5 transition font-medium" style="color: var(--text-secondary);">
               <svg class="w-4 h-4 shrink-0" style="color: var(--accent-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
               <span>Trocar minha senha</span>
@@ -1005,6 +1014,11 @@
               <span>Perfis & Equipe</span>
             </button>
 
+            <button onclick="navigateTo('historico')" data-nav="historico" data-master-only="true" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white">
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>Histórico de Atividades</span>
+            </button>
+
             <button onclick="navigateTo('database')" data-nav="database" data-super-only="true" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white">
               <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
               <span>Segurança & Database</span>
@@ -1022,6 +1036,7 @@
           <span>Blindagem Anti-Clone</span>
           <span class="text-sky-400 font-semibold">Shield v4.4</span>
         </div>
+        <img src="logo-arc-tech.png" alt="ARC Tech" class="mx-auto mt-3 h-16 w-auto object-contain opacity-90 select-none" draggable="false" onerror="this.remove()" />
       </div>
     </aside>
 
@@ -1039,6 +1054,8 @@
             <button onclick="navigateTo('relatorios')" class="px-4 py-2 rounded-xl erp-pill text-xs font-semibold">Relatórios & PDF</button>
           </div>
         </div>
+
+        <div id="today-panel"></div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div class="erp-card kpi-card p-5">
@@ -1288,13 +1305,14 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div class="lg:col-span-7 erp-card p-5 space-y-4">
             <div class="flex flex-col sm:flex-row gap-2.5">
-              <input type="text" id="pdv-search-input" oninput="renderPDVGrid()" placeholder="Buscar produto por nome ou código SKU/EAN..." class="erp-input w-full px-3.5 py-2.5 text-xs" />
+              <input type="text" id="pdv-search-input" oninput="renderPDVGrid()" onkeydown="onPDVSearchKeydown(event)" autocomplete="off" placeholder="Bipe o código de barras ou digite o nome e aperte Enter..." class="erp-input w-full px-3.5 py-2.5 text-xs" />
               <button type="button" onclick="openBarcodeQuickScanPDV()" class="px-4 py-2.5 rounded-xl erp-pill text-xs font-bold text-amber-400 flex items-center justify-center gap-2 shrink-0">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h2v16H3V4zm4 0h1v16H7V4zm3 0h2v16h-2V4zm4 0h1v16h-1V4zm3 0h2v16h-2V4z"/></svg>
                 <span>Bipar Código</span>
               </button>
             </div>
 
+            <p class="text-[10px] text-slate-500 leading-relaxed">Bipe o código e o item entra no carrinho • várias unidades: <strong>3*código</strong> • <strong>F2</strong> finalizar • <strong>F4</strong> buscar • <strong>F8</strong> limpar carrinho</p>
             <div id="pdv-products-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
           </div>
 
@@ -1384,7 +1402,7 @@
             </div>
 
             <div class="space-y-2">
-              <button type="button" onclick="completePDVSale()" class="btn-accent w-full py-2.5 text-xs font-bold shadow-lg">Finalizar Venda</button>
+              <button type="button" onclick="completePDVSale()" class="btn-accent w-full py-2.5 text-xs font-bold shadow-lg">Finalizar Venda (F2)</button>
               <label class="flex items-center gap-2 text-[11px] text-slate-400 cursor-pointer select-none">
                 <input type="checkbox" class="auto-receipt-check" onchange="setAutoReceipt(this.checked)" />
                 Imprimir cupom não fiscal automaticamente ao finalizar
@@ -2113,6 +2131,39 @@
       </section>
 
       <!-- ==================== VIEW 12: SEGURANÇA & DATABASE ==================== -->
+      <section id="view-historico" class="view-section hidden space-y-6">
+        <div>
+          <h2 class="text-2xl font-extrabold tracking-tight text-white">Histórico de Atividades</h2>
+          <p class="text-xs text-slate-400">Quem fez o quê no sistema: vendas, exclusões, edições, devoluções, cadastros e acessos. Visível somente para o Master Admin.</p>
+        </div>
+        <div class="erp-card p-5 space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+            <select id="audit-filter-user" onchange="renderAuditLog()" class="erp-input px-3 py-2 text-xs"><option value="all">Todos os usuários</option></select>
+            <select id="audit-filter-period" onchange="renderAuditLog()" class="erp-input px-3 py-2 text-xs">
+              <option value="today">Hoje</option>
+              <option value="7" selected>Últimos 7 dias</option>
+              <option value="30">Últimos 30 dias</option>
+              <option value="all">Todo o período</option>
+            </select>
+            <input type="text" id="audit-filter-text" oninput="renderAuditLog()" placeholder="Buscar (ex.: exclu, VND-, nome do produto)" class="erp-input px-3 py-2 text-xs" />
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left">
+              <thead>
+                <tr class="text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  <th class="py-3 px-3">Data / Hora</th>
+                  <th class="py-3 px-3">Usuário</th>
+                  <th class="py-3 px-3">Ação</th>
+                  <th class="py-3 px-3">Detalhes</th>
+                </tr>
+              </thead>
+              <tbody id="audit-log-body" class="divide-y divide-slate-800/80"></tbody>
+            </table>
+          </div>
+          <p id="audit-log-count" class="text-[11px] text-slate-500"></p>
+        </div>
+      </section>
+
       <section id="view-database" class="view-section hidden space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -2836,6 +2887,8 @@
         entities: [
           { id: 'ENT-001', type: 'Cliente', name: 'Consumidor Final', doc: '-', phone: '-' }
         ],
+        auditLog: [],
+        returns: [],
         team: []
       };
 
@@ -2946,6 +2999,8 @@
                 : [...DEFAULT_PRODUCT_GROUPS],
               quotes: Array.isArray(parsed.quotes) ? parsed.quotes : [],
               catalogOrders: Array.isArray(parsed.catalogOrders) ? parsed.catalogOrders : [],
+              auditLog: Array.isArray(parsed.auditLog) ? parsed.auditLog : [],
+              returns: Array.isArray(parsed.returns) ? parsed.returns : [],
               costs: Array.isArray(parsed.costs) ? parsed.costs : [],
               entities: Array.isArray(parsed.entities) && parsed.entities.length > 0 ? parsed.entities : appState.entities
             };
@@ -3152,6 +3207,8 @@
           loadLocalState();
           applyAuthenticatedSession();
           await pullStateFromSupabase(false);
+          logAudit('Login', `${authenticatedUser.name} entrou no sistema`);
+          saveState(true);
           if (canManageSaasPlatform()) await syncSaasTenantsFromSupabase();
           showToast(`Bem-vindo(a), ${authenticatedUser.name} • ${authenticatedUser.role}!`);
         } catch (err) {
@@ -3295,6 +3352,8 @@
           if (data && data.payload) {
             const remote = data.payload;
             const localHandledKeep = { ...(appState.catalogOrdersHandled || {}) };
+            const localAuditKeep = Array.isArray(appState.auditLog) ? [...appState.auditLog] : [];
+            const localReturnsKeep = Array.isArray(appState.returns) ? [...appState.returns] : [];
             appState = {
               ...appState,
               ...remote,
@@ -3308,6 +3367,8 @@
               entities: Array.isArray(remote.entities) && remote.entities.length > 0 ? remote.entities : appState.entities
             };
             appState.catalogOrdersHandled = { ...(remote.catalogOrdersHandled || {}), ...localHandledKeep };
+            appState.auditLog = mergeRecordsById(remote.auditLog, localAuditKeep, 1000);
+            appState.returns = mergeRecordsById(remote.returns, localReturnsKeep, 3000);
           } else {
             if (!canManageSaasPlatform()) {
               appState.store.name = currentUser?.storeName || appState.store.name;
@@ -3937,6 +3998,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
             return showErr('A senha foi enviada, mas não consegui confirmar. Saia e tente entrar com a NOVA senha; se não funcionar, use a antiga.');
           }
 
+          logAudit('Senha alterada', `Usuário ${ctx.username}`);
+          saveState(true);
           closeChangePasswordModal();
           showToast(`Senha de "${ctx.username}" alterada com sucesso!`);
         } catch (err) {
@@ -3983,6 +4046,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           document.getElementById('team-user-input').value = '';
           document.getElementById('team-email-input').value = '';
           document.getElementById('team-pass-input').value = '';
+          logAudit('Usuário da equipe salvo', `${username} • cargo ${role || ''}`);
+          saveState(true);
           showToast(`Usuário "${username}" gravado na loja (${storeId}) com senha Bcrypt!`);
           await syncTeamFromSupabase();
         } catch (err) {
@@ -3995,6 +4060,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         if (overlay) overlay.classList.add('hidden');
 
         if (!currentUser) return;
+        try { updateDashboardKPIs(); } catch (e) { /* painel será atualizado na próxima sincronização */ }
         const initials = (currentUser.name || 'AD').substring(0, 2).toUpperCase();
         document.getElementById('header-user-initials').textContent = initials;
         document.getElementById('header-user-name').textContent = currentUser.name;
@@ -4191,6 +4257,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       function saveStoreIdentity() {
         const newName = (document.getElementById('store-name-input').value || '').trim();
         if (!newName) return showToast('Informe o nome da loja.', true);
+        logAudit('Identidade da loja alterada', `Nome: ${newName}`);
         appState.store.name = newName;
         appState.store.cnpj = (document.getElementById('store-cnpj-input').value || '').trim();
         appState.store.phone = (document.getElementById('store-phone-input').value || '').trim();
@@ -4239,7 +4306,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
       /* ==================== NAVEGAÇÃO ==================== */
       function navigateTo(viewId) {
-        if ((viewId === 'equipe' || viewId === 'saas_lojas') && !isMasterAdmin()) {
+        if ((viewId === 'equipe' || viewId === 'saas_lojas' || viewId === 'historico') && !isMasterAdmin()) {
           return showToast('Acesso restrito ao Master Admin.', true);
         }
         if (viewId === 'saas_lojas' && !canManageSaasPlatform()) {
@@ -4276,6 +4343,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         if (viewId === 'entidades') renderEntitiesTable();
         if (viewId === 'saas_lojas') syncSaasTenantsFromSupabase();
         if (viewId === 'equipe') syncTeamFromSupabase();
+        if (viewId === 'historico') renderAuditLog();
+        if (viewId === 'vendas' && window.innerWidth >= 1024) setTimeout(() => focusPDVSearch(false), 60);
       }
 
       function saveCustomKPIs(e) {
@@ -4302,7 +4371,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       }
 
       function updateDashboardKPIs() {
-        const salesRevenue = appState.sales.reduce((acc, s) => acc + Number(s.total || 0), 0);
+        try { renderTodayPanel(); } catch (e) { console.error('Painel do dia:', e); }
+        const salesRevenue = appState.sales.reduce((acc, s) => acc + saleNet(s), 0);
         const effectiveRevenue = Number(appState.customRevenue) > 0 ? Number(appState.customRevenue) : salesRevenue;
         const { balance } = computeFinancialSummary();
 
@@ -4364,7 +4434,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           daysLabels.push(dayStr.slice(0, 5));
           const sumDay = appState.sales
             .filter(s => (s.date || '').startsWith(dayStr))
-            .reduce((acc, s) => acc + Number(s.total || 0), 0);
+            .reduce((acc, s) => acc + saleNet(s), 0);
           daysValues.push(sumDay);
         }
 
@@ -4640,6 +4710,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       }
 
       function deleteProduct(id) {
+        const _delP = appState.products.find(p => p.id === id);
+        if (_delP) logAudit('Produto excluído', `${_delP.name} (${_delP.sku || _delP.id}) • estoque ${_delP.stock}`);
         appState.products = appState.products.filter(p => p.id !== id);
         saveState();
         renderProductsTable();
@@ -4667,7 +4739,16 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
         if (id) {
           const idx = appState.products.findIndex(p => p.id === id);
-          if (idx >= 0) appState.products[idx] = { ...appState.products[idx], sku, name, group, stock, cost, price };
+          if (idx >= 0) {
+            const _old = appState.products[idx];
+            const _chg = [];
+            if (Number(_old.stock) !== stock) _chg.push(`estoque ${_old.stock}→${stock}`);
+            if (Number(_old.price) !== price) _chg.push(`preço ${formatBRL(_old.price)}→${formatBRL(price)}`);
+            if (Number(_old.cost) !== cost) _chg.push(`custo ${formatBRL(_old.cost)}→${formatBRL(cost)}`);
+            if (_old.name !== name) _chg.push(`nome "${_old.name}"→"${name}"`);
+            logAudit('Produto editado', `${name}${_chg.length ? ' • ' + _chg.join(' • ') : ' • sem mudanças relevantes'}`);
+            appState.products[idx] = { ..._old, sku, name, group, stock, cost, price };
+          }
           showToast('Produto atualizado!');
         } else {
           appState.products.unshift({
@@ -4679,6 +4760,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
             cost,
             price
           });
+          logAudit('Produto cadastrado', `${name} • estoque ${stock} • preço ${formatBRL(price)}`);
           showToast('Novo produto cadastrado!');
         }
 
@@ -5086,6 +5168,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         const raw = document.getElementById('initial-cash-input').value.replace(/\./g, '').replace(',', '.');
         const val = parseFloat(raw);
         if (isNaN(val) || val < 0) return showToast('Valor inválido para saldo inicial.', true);
+        logAudit('Saldo inicial alterado', `${formatBRL(appState.initialCash)} → ${formatBRL(val)}`);
         appState.initialCash = val;
         saveState();
         renderFinancials();
@@ -5100,6 +5183,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         const method = document.getElementById('tx-method').value;
         const amount = parseFloat(document.getElementById('tx-amount').value);
         if (!desc || isNaN(amount) || amount <= 0) return;
+        logAudit('Lançamento no caixa', `${type === 'entrada' ? 'Entrada' : 'Saída'} • ${desc} • ${formatBRL(amount)} • ${method}`);
 
         appState.transactions.unshift({
           id: 'TX-' + Date.now().toString().slice(-6),
@@ -5134,6 +5218,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         const id = document.getElementById('edit-tx-id').value;
         const idx = appState.transactions.findIndex(t => t.id === id);
         if (idx >= 0) {
+          logAudit('Lançamento editado', `${id} • antes: ${appState.transactions[idx].desc} • ${formatBRL(appState.transactions[idx].amount)}`);
           appState.transactions[idx] = {
             ...appState.transactions[idx],
             type: document.getElementById('edit-tx-type').value,
@@ -5150,6 +5235,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       }
 
       function deleteTransaction(id) {
+        const _tx = appState.transactions.find(t => t.id === id);
+        if (_tx) logAudit('Lançamento excluído', `${_tx.desc} • ${_tx.type === 'entrada' ? 'Entrada' : 'Saída'} • ${formatBRL(_tx.amount)}`);
         appState.transactions = appState.transactions.filter(t => t.id !== id);
         saveState();
         renderFinancials();
@@ -5202,6 +5289,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
       function clearPDVCart() {
         pdvLinkedCatalogOrderId = null;
+        pdvPendingExchange = null;
         cartItems = [];
         const discVal = document.getElementById('pdv-discount-value');
         if (discVal) discVal.value = 0;
@@ -5329,9 +5417,13 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       function completePDVSale() {
         if (!cartItems.length) return showToast('Adicione pelo menos 1 produto ao carrinho.', true);
         const linkedCatalogOrderId = pdvLinkedCatalogOrderId;
+        const pendingExchange = pdvPendingExchange;
         const customer = document.getElementById('pdv-customer-select')?.value || 'Consumidor Final';
         const payment = document.getElementById('pdv-payment-select')?.value || 'Pix';
         const { subtotal, discountAmount, total } = calculatePDVCartTotals();
+        if (pendingExchange && Number(pendingExchange.credit) > subtotal + 0.009) {
+          return showToast(`O crédito da troca (${formatBRL(pendingExchange.credit)}) é maior que o total dos novos itens (${formatBRL(subtotal)}). Adicione mais itens ou registre como devolução.`, true);
+        }
         const nowStr = new Date().toLocaleString('pt-BR');
         const saleId = 'VND-' + Date.now().toString().slice(-6);
         const cashReceivedVal = payment === 'Dinheiro' ? (parseFloat(document.getElementById('pdv-cash-received')?.value) || 0) : 0;
@@ -5358,7 +5450,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           discount: discountAmount,
           total,
           cashReceived: cashReceivedVal,
-          change: cashReceivedVal > total ? Math.round((cashReceivedVal - total) * 100) / 100 : 0
+          change: cashReceivedVal > total ? Math.round((cashReceivedVal - total) * 100) / 100 : 0,
+          ...(pendingExchange ? { exchangeFrom: pendingExchange.saleId, exchangeCredit: pendingExchange.credit } : {})
         });
 
         const txDesc = discountAmount > 0
@@ -5374,6 +5467,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           amount: total
         });
 
+        logAudit('Venda finalizada', `${saleId} • ${customer} • ${payment} • ${formatBRL(total)} • ${cartItems.length} item(ns)${discountAmount > 0 ? ' • desc. ' + formatBRL(discountAmount) : ''}${pendingExchange ? ' • troca ref. ' + pendingExchange.saleId : ''}`);
         clearPDVCart();
         if (linkedCatalogOrderId) {
           finalizeLinkedCatalogOrder(linkedCatalogOrderId, saleId);
@@ -5386,6 +5480,527 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           ? `Venda ${saleId} concluída! Pedido ${linkedCatalogOrderId} marcado como Faturado.`
           : `Venda ${saleId} concluída no valor de ${formatBRL(total)}!`);
         offerReceiptAfterSale(saleId);
+      }
+
+
+      /* ==================== HISTÓRICO DE ATIVIDADES (somente Master Admin) ==================== */
+      function mergeRecordsById(a, b, cap) {
+        const map = new Map();
+        [].concat(Array.isArray(a) ? a : [], Array.isArray(b) ? b : []).forEach(r => {
+          if (r && r.id && !map.has(r.id)) map.set(r.id, r);
+        });
+        const list = Array.from(map.values()).sort((x, y) => String(y.ts || '').localeCompare(String(x.ts || '')));
+        return cap ? list.slice(0, cap) : list;
+      }
+
+      function logAudit(action, detail) {
+        try {
+          if (!Array.isArray(appState.auditLog)) appState.auditLog = [];
+          const now = new Date();
+          appState.auditLog.unshift({
+            id: 'AUD-' + now.getTime().toString(36) + Math.random().toString(36).slice(2, 6),
+            ts: now.toISOString(),
+            date: now.toLocaleString('pt-BR'),
+            user: (currentUser && (currentUser.name || currentUser.username)) || 'sistema',
+            role: (currentUser && currentUser.role) || '',
+            action: String(action || ''),
+            detail: String(detail || '').slice(0, 300)
+          });
+          if (appState.auditLog.length > 1000) appState.auditLog.length = 1000;
+        } catch (e) { /* o histórico nunca pode travar uma venda */ }
+      }
+
+      function auditBadgeClass(action) {
+        const a = String(action || '').toLowerCase();
+        if (a.includes('exclu')) return 'bg-red-500/15 text-red-400';
+        if (a.includes('edit') || a.includes('alter') || a.includes('senha')) return 'bg-amber-500/15 text-amber-300';
+        if (a.includes('venda finalizada')) return 'bg-emerald-500/15 text-emerald-400';
+        if (a.includes('devolu') || a.includes('troca')) return 'bg-violet-500/15 text-violet-300';
+        if (a.includes('login')) return 'bg-sky-500/15 text-sky-300';
+        return 'bg-slate-700/60 text-slate-300';
+      }
+
+      function renderAuditLog() {
+        const body = document.getElementById('audit-log-body');
+        if (!body) return;
+        if (!isMasterAdmin()) {
+          body.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-slate-500">Acesso restrito ao Master Admin.</td></tr>';
+          return;
+        }
+        const all = Array.isArray(appState.auditLog) ? appState.auditLog : [];
+        const userSel = document.getElementById('audit-filter-user');
+        const prevUser = userSel ? userSel.value : 'all';
+        if (userSel) {
+          const users = [...new Set(all.map(e => e.user).filter(Boolean))].sort();
+          userSel.innerHTML = '<option value="all">Todos os usuários</option>' + users.map(u => `<option value="${escapeHtmlStr(u)}">${escapeHtmlStr(u)}</option>`).join('');
+          userSel.value = users.includes(prevUser) ? prevUser : 'all';
+        }
+        const user = userSel ? userSel.value : 'all';
+        const period = document.getElementById('audit-filter-period')?.value || '7';
+        const q = (document.getElementById('audit-filter-text')?.value || '').trim().toLowerCase();
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const minTs = period === 'all' ? 0 : (period === 'today' ? startOfToday : now.getTime() - Number(period) * 86400000);
+
+        const filtered = all.filter(e => {
+          if (user !== 'all' && e.user !== user) return false;
+          if (minTs && new Date(e.ts).getTime() < minTs) return false;
+          if (q && !(String(e.action).toLowerCase().includes(q) || String(e.detail).toLowerCase().includes(q) || String(e.user).toLowerCase().includes(q))) return false;
+          return true;
+        });
+        const shown = filtered.slice(0, 300);
+        body.innerHTML = shown.length
+          ? shown.map(e => `
+            <tr class="hover:bg-slate-800/40 align-top">
+              <td class="py-2.5 px-3 text-slate-400 whitespace-nowrap">${escapeHtmlStr(e.date)}</td>
+              <td class="py-2.5 px-3"><div class="font-bold text-white">${escapeHtmlStr(e.user)}</div><div class="text-[10px] text-slate-500">${escapeHtmlStr(e.role || '')}</div></td>
+              <td class="py-2.5 px-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded text-[11px] font-bold ${auditBadgeClass(e.action)}">${escapeHtmlStr(e.action)}</span></td>
+              <td class="py-2.5 px-3 text-slate-300">${escapeHtmlStr(e.detail)}</td>
+            </tr>`).join('')
+          : '<tr><td colspan="4" class="py-8 text-center text-slate-500">Nenhuma atividade encontrada para este filtro.</td></tr>';
+        const count = document.getElementById('audit-log-count');
+        if (count) count.textContent = `Mostrando ${shown.length} de ${filtered.length} registros (o sistema guarda os últimos 1000).`;
+      }
+
+      /* ==================== PAINEL DO DIA ==================== */
+      function saleNet(s) {
+        return Number(s.total || 0) - Number(s.returnedAmount || 0);
+      }
+
+      function renderTodayPanel() {
+        const el = document.getElementById('today-panel');
+        if (!el) return;
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('pt-BR');
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yStr = yest.toLocaleDateString('pt-BR');
+        const salesOf = (d) => (appState.sales || []).filter(s => (s.date || '').startsWith(d));
+        const tSales = salesOf(todayStr);
+        const ySales = salesOf(yStr);
+        const tTotal = tSales.reduce((a, s) => a + saleNet(s), 0);
+        const yTotal = ySales.reduce((a, s) => a + saleNet(s), 0);
+        const ticket = tSales.length ? tTotal / tSales.length : 0;
+        let cmp = '<span class="text-slate-500">Sem vendas ainda hoje</span>';
+        if (yTotal > 0) {
+          const pct = ((tTotal - yTotal) / yTotal) * 100;
+          cmp = `<span class="${pct >= 0 ? 'text-emerald-400' : 'text-red-400'} font-bold">${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(0)}%</span> <span class="text-slate-500">vs ontem (${formatBRL(yTotal)})</span>`;
+        } else if (tTotal > 0) {
+          cmp = '<span class="text-slate-500">Ontem não teve vendas</span>';
+        }
+
+        const products = appState.products || [];
+        const minOf = (p) => (p.minStock != null && p.minStock !== '') ? Number(p.minStock) : 5;
+        const out = products.filter(p => Number(p.stock || 0) <= 0);
+        const low = products.filter(p => Number(p.stock || 0) > 0 && Number(p.stock || 0) <= minOf(p));
+        const lowNames = [...out, ...low].sort((a, b) => Number(a.stock || 0) - Number(b.stock || 0)).slice(0, 4);
+
+        const openCosts = (appState.costs || []).filter(c => c.status !== 'Pago');
+        const openCostsTotal = openCosts.reduce((a, c) => a + Number(c.actual || 0), 0);
+        const pendingOrders = (appState.catalogOrders || []).filter(o => o.status === 'Aguardando Separação').length;
+        const openQuotes = (appState.quotes || []).filter(q => q.status !== 'Aprovado').length;
+
+        const alertCard = (view, title, main, sub, tone) => `
+          <button type="button" onclick="navigateTo('${view}')" class="text-left erp-card p-4 hover:border-sky-500/40 transition">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">${title}</div>
+            <div class="text-lg font-extrabold mt-1 ${tone}">${main}</div>
+            <div class="text-[11px] text-slate-400 mt-1 leading-snug">${sub}</div>
+          </button>`;
+
+        const stockTone = (out.length + low.length) > 0 ? (out.length > 0 ? 'text-red-400' : 'text-amber-300') : 'text-emerald-400';
+        const stockMain = (out.length + low.length) > 0 ? `${out.length} sem estoque • ${low.length} acabando` : 'Estoque em dia';
+        const stockSub = lowNames.length ? lowNames.map(p => `${escapeHtmlStr(p.name)} (${Number(p.stock || 0)})`).join('<br>') : 'Nenhum produto com estoque baixo.';
+
+        const cards = [];
+        cards.push(`
+          <div class="erp-card p-4">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Vendas de hoje</div>
+            <div class="text-2xl font-extrabold text-white mt-1 tabular-nums">${formatBRL(tTotal)}</div>
+            <div class="text-[11px] mt-1">${tSales.length} venda(s) • ticket ${formatBRL(ticket)}</div>
+            <div class="text-[11px] mt-0.5">${cmp}</div>
+          </div>`);
+        cards.push(alertCard('estoque', 'Estoque', stockMain, stockSub, stockTone));
+        if (isManagerOrMaster()) {
+          cards.push(alertCard('custos', 'Contas a pagar', openCosts.length ? `${openCosts.length} em aberto • ${formatBRL(openCostsTotal)}` : 'Nada em aberto',
+            openCosts.length ? 'Toque para ver as despesas pendentes.' : 'Todas as despesas estão pagas.', openCosts.length ? 'text-amber-300' : 'text-emerald-400'));
+        }
+        cards.push(alertCard('catalogo', 'Pedidos do catálogo', pendingOrders ? `${pendingOrders} aguardando` : 'Nenhum pendente',
+          pendingOrders ? 'Pedidos novos esperando separação.' : 'Sem pedidos novos no momento.', pendingOrders ? 'text-sky-300' : 'text-emerald-400'));
+        if (!isManagerOrMaster()) {
+          cards.push(alertCard('orcamentos', 'Orçamentos', openQuotes ? `${openQuotes} em aberto` : 'Nenhum em aberto',
+            openQuotes ? 'Orçamentos aguardando aprovação.' : 'Sem orçamentos pendentes.', openQuotes ? 'text-amber-300' : 'text-emerald-400'));
+        }
+
+        el.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-extrabold text-white">Hoje na loja • ${escapeHtmlStr(todayStr)}</h3>
+            <span class="text-[10px] text-slate-500">Toque nos avisos para abrir a tela</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">${cards.join('')}</div>`;
+      }
+
+      /* ==================== PDV: bipagem contínua e atalhos ==================== */
+      function pdvBeep(ok) {
+        try {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          const ctx = pdvBeep._ctx || (pdvBeep._ctx = new AC());
+          if (ctx.state === 'suspended') ctx.resume();
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'sine';
+          o.frequency.value = ok ? 1200 : 300;
+          g.gain.value = 0.08;
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start();
+          o.stop(ctx.currentTime + (ok ? 0.08 : 0.25));
+        } catch (e) { /* sem áudio: segue sem som */ }
+      }
+
+      function focusPDVSearch(selectText) {
+        const input = document.getElementById('pdv-search-input');
+        if (!input) return;
+        input.focus();
+        if (selectText) input.select();
+      }
+
+      function onPDVSearchKeydown(e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const input = e.target;
+        let raw = String(input.value || '').trim();
+        if (!raw) return;
+        let qty = 1;
+        const m = raw.match(/^(\d{1,3})\s*[*xX]\s*(.+)$/);
+        if (m) { qty = Math.max(1, parseInt(m[1], 10)); raw = m[2].trim(); }
+        const lower = raw.toLowerCase();
+        const products = appState.products || [];
+        let prod = products.find(p => String(p.sku || '').trim().toLowerCase() === lower || String(p.id || '').toLowerCase() === lower);
+        if (!prod) {
+          const matches = products.filter(p => (p.name || '').toLowerCase().includes(lower) || (p.sku || '').toLowerCase().includes(lower));
+          if (matches.length === 1) prod = matches[0];
+        }
+        if (!prod) {
+          pdvBeep(false);
+          showToast(`Produto não encontrado: ${raw}`, true);
+          input.select();
+          return;
+        }
+        for (let i = 0; i < qty; i++) addToPDVCart(prod.id);
+        input.value = '';
+        renderPDVGrid();
+        input.focus();
+        pdvBeep(true);
+        showToast(`✓ ${prod.name}${qty > 1 ? ' ×' + qty : ''}${Number(prod.stock || 0) <= 0 ? ' (atenção: estoque zerado)' : ''}`);
+      }
+
+      document.addEventListener('keydown', function (e) {
+        if (!currentUser || e.repeat) return;
+        const view = document.getElementById('view-vendas');
+        if (!view || view.classList.contains('hidden')) return;
+        if (document.getElementById('receipt-dialog') || document.getElementById('return-modal') || document.getElementById('pwd-change-modal')) return;
+        const modalsOpen = ['modal-produto', 'modal-edit-sale', 'modal-edit-tx', 'modal-loja'].some(id => {
+          const el = document.getElementById(id);
+          return el && !el.classList.contains('hidden');
+        });
+        if (modalsOpen) return;
+        if (e.key === 'F2') {
+          e.preventDefault();
+          completePDVSale();
+        } else if (e.key === 'F4') {
+          e.preventDefault();
+          focusPDVSearch(true);
+        } else if (e.key === 'F8') {
+          e.preventDefault();
+          if (cartItems.length && confirm('Limpar todo o carrinho?')) clearPDVCart();
+        } else if (e.key === 'Escape') {
+          const input = document.getElementById('pdv-search-input');
+          if (input && document.activeElement === input && input.value) {
+            input.value = '';
+            renderPDVGrid();
+          }
+        }
+      });
+
+      /* ==================== DEVOLUÇÃO E TROCA ==================== */
+      let returnDraftSaleId = null;
+      let pdvPendingExchange = null;
+
+      function saleHasReturns(sale) {
+        return Number(sale.returnedAmount || 0) > 0 || Number(sale.exchangedAmount || 0) > 0 ||
+          (sale.items || []).some(it => Number(it.returnedQty || 0) > 0);
+      }
+      function getReturnableQty(it) {
+        return Math.max(0, Number(it.qty || 0) - Number(it.returnedQty || 0));
+      }
+      function round2(n) { return Math.round(Number(n || 0) * 100) / 100; }
+      function saleNetFactor(sale) {
+        const sub = Number(sale.subtotal || (sale.items || []).reduce((a, it) => a + Number(it.price || 0) * Number(it.qty || 0), 0));
+        const disc = Number(sale.discount || 0);
+        return sub > 0 ? Math.max(0, 1 - disc / sub) : 1;
+      }
+
+      function closeReturnModal() {
+        document.getElementById('return-modal')?.remove();
+        returnDraftSaleId = null;
+      }
+
+      function openReturnModal(saleId) {
+        const sale = (appState.sales || []).find(x => x.id === saleId);
+        if (!sale) return;
+        if (!(sale.items || []).some(it => getReturnableQty(it) > 0)) {
+          return showToast('Todos os itens desta venda já foram devolvidos.', true);
+        }
+        closeReturnModal();
+        returnDraftSaleId = saleId;
+        const payDefault = ['Pix', 'Dinheiro', 'Cartão de Crédito', 'Cartão de Débito'].includes(sale.payment) ? sale.payment : 'Dinheiro';
+        const rows = (sale.items || []).map((it, i) => {
+          const max = getReturnableQty(it);
+          return `
+            <tr class="border-t border-slate-800/80">
+              <td class="py-2 pr-2 text-white font-medium">${escapeHtmlStr(it.name)}</td>
+              <td class="py-2 px-2 text-center text-slate-300">${Number(it.qty)}${Number(it.returnedQty || 0) ? `<div class="text-[10px] text-amber-300">${Number(it.returnedQty)} já devolv.</div>` : ''}</td>
+              <td class="py-2 px-2 text-right text-slate-300 tabular-nums">${formatBRL(it.price)}</td>
+              <td class="py-2 pl-2 text-right"><input type="number" min="0" max="${max}" value="0" data-ret-idx="${i}" ${max === 0 ? 'disabled' : ''} oninput="updateReturnSummary()" class="erp-input w-16 px-2 py-1 text-xs text-center" /></td>
+            </tr>`;
+        }).join('');
+
+        const wrap = document.createElement('div');
+        wrap.id = 'return-modal';
+        wrap.className = 'fixed inset-0 z-[80] flex items-start sm:items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto';
+        wrap.innerHTML = `
+          <div class="w-full max-w-lg erp-card p-5 space-y-3 my-4">
+            <div>
+              <h3 class="text-base font-extrabold text-white">Devolução / Troca</h3>
+              <p class="text-[11px] text-slate-400">Venda <strong class="text-white">${escapeHtmlStr(sale.id)}</strong> • ${escapeHtmlStr(sale.customer || 'Consumidor Final')} • ${escapeHtmlStr(sale.date || '')}</p>
+            </div>
+            <table class="w-full text-xs">
+              <thead><tr class="text-[10px] uppercase text-slate-500"><th class="text-left pb-1">Item</th><th class="pb-1">Vendido</th><th class="text-right pb-1">Valor</th><th class="text-right pb-1">Devolver</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-700 cursor-pointer text-xs text-slate-200">
+                <input type="radio" name="return-type" value="devolucao" checked onchange="updateReturnSummary()" /> <span><strong>Devolução</strong><br><span class="text-[10px] text-slate-400">cliente recebe de volta</span></span>
+              </label>
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-700 cursor-pointer text-xs text-slate-200">
+                <input type="radio" name="return-type" value="troca" onchange="updateReturnSummary()" /> <span><strong>Troca</strong><br><span class="text-[10px] text-slate-400">leva outro produto</span></span>
+              </label>
+            </div>
+
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Motivo</label>
+              <select id="return-reason" onchange="onReturnReasonChange()" class="erp-input w-full px-3 py-2 text-xs">
+                <option>Arrependimento / desistência</option>
+                <option>Defeito / não funciona</option>
+                <option>Produto errado</option>
+                <option>Outro motivo</option>
+              </select>
+            </div>
+
+            <div id="return-method-box">
+              <label class="block text-[11px] text-slate-400 mb-1">Como devolver o dinheiro</label>
+              <select id="return-method" class="erp-input w-full px-3 py-2 text-xs">
+                <option value="${escapeHtmlStr(payDefault)}">${escapeHtmlStr(payDefault)} (mesma forma da venda)</option>
+                ${['Dinheiro', 'Pix', 'Cartão de Crédito', 'Cartão de Débito'].filter(m => m !== payDefault).map(m => `<option value="${m}">${m}</option>`).join('')}
+                <option value="SEM_REEMBOLSO">Sem saída de caixa (abatimento / venda a prazo)</option>
+              </select>
+            </div>
+
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+              <input type="checkbox" id="return-restock" checked /> Devolver o produto ao estoque
+              <span class="text-[10px] text-slate-500">(desmarque se estiver com defeito)</span>
+            </label>
+
+            <input type="text" id="return-note" placeholder="Observação (opcional)" class="erp-input w-full px-3 py-2 text-xs" />
+
+            <div id="return-summary" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300"></div>
+            <div id="return-error" class="hidden text-[11px] font-semibold text-red-400"></div>
+
+            <div class="flex justify-end gap-2 pt-1">
+              <button type="button" onclick="closeReturnModal()" class="px-4 py-2 rounded-xl erp-pill text-xs font-semibold">Cancelar</button>
+              <button type="button" id="return-confirm-btn" onclick="confirmReturn()" class="btn-accent px-4 py-2 text-xs font-bold">Registrar devolução</button>
+            </div>
+          </div>`;
+        document.body.appendChild(wrap);
+        updateReturnSummary();
+      }
+
+      function onReturnReasonChange() {
+        const reason = document.getElementById('return-reason')?.value || '';
+        const box = document.getElementById('return-restock');
+        if (box) box.checked = !reason.startsWith('Defeito');
+      }
+
+      function getReturnSelection() {
+        const sale = (appState.sales || []).find(x => x.id === returnDraftSaleId);
+        if (!sale) return { sale: null, picks: [], amount: 0 };
+        const factor = saleNetFactor(sale);
+        const picks = [];
+        document.querySelectorAll('#return-modal [data-ret-idx]').forEach(inp => {
+          const idx = parseInt(inp.getAttribute('data-ret-idx'), 10);
+          const it = sale.items[idx];
+          if (!it) return;
+          const qty = Math.max(0, Math.min(getReturnableQty(it), parseInt(inp.value, 10) || 0));
+          if (qty > 0) picks.push({ idx, qty, price: Number(it.price || 0), name: it.name, productId: it.productId });
+        });
+        const amount = round2(picks.reduce((a, pk) => a + pk.price * pk.qty, 0) * factor);
+        return { sale, picks, amount };
+      }
+
+      function updateReturnSummary() {
+        const sum = document.getElementById('return-summary');
+        if (!sum) return;
+        const { picks, amount } = getReturnSelection();
+        const type = document.querySelector('#return-modal input[name="return-type"]:checked')?.value || 'devolucao';
+        const methodBox = document.getElementById('return-method-box');
+        if (methodBox) methodBox.classList.toggle('hidden', type !== 'devolucao');
+        const btn = document.getElementById('return-confirm-btn');
+        if (btn) btn.textContent = type === 'troca' ? 'Registrar troca e ir ao PDV' : 'Registrar devolução';
+        const units = picks.reduce((a, pk) => a + pk.qty, 0);
+        sum.innerHTML = units
+          ? (type === 'troca'
+            ? `${units} item(ns) • crédito de troca: <strong class="text-white">${formatBRL(amount)}</strong><br><span class="text-[10px] text-slate-400">O crédito entra como desconto na nova venda no PDV.</span>`
+            : `${units} item(ns) • valor a devolver: <strong class="text-white">${formatBRL(amount)}</strong><br><span class="text-[10px] text-slate-400">Já considera o desconto proporcional dado na venda.</span>`)
+          : 'Informe a quantidade de cada item que será devolvido.';
+      }
+
+      function confirmReturn() {
+        const { sale, picks, amount } = getReturnSelection();
+        const errBox = document.getElementById('return-error');
+        const showErr = (m) => { if (errBox) { errBox.textContent = m; errBox.classList.remove('hidden'); } };
+        if (!sale) return;
+        if (!picks.length) return showErr('Informe a quantidade de pelo menos um item.');
+
+        const type = document.querySelector('#return-modal input[name="return-type"]:checked')?.value || 'devolucao';
+        const reason = document.getElementById('return-reason')?.value || 'Outro motivo';
+        const note = (document.getElementById('return-note')?.value || '').trim();
+        const method = document.getElementById('return-method')?.value || 'Dinheiro';
+        const restock = !!document.getElementById('return-restock')?.checked;
+        const now = new Date();
+        const p2 = (n) => String(n).padStart(2, '0');
+        const retId = 'DEV-' + String(now.getFullYear()).slice(-2) + p2(now.getMonth() + 1) + p2(now.getDate()) + '-' + p2(now.getHours()) + p2(now.getMinutes()) + p2(now.getSeconds());
+        const nowStr = now.toLocaleString('pt-BR');
+
+        picks.forEach(pk => {
+          const it = sale.items[pk.idx];
+          it.returnedQty = Number(it.returnedQty || 0) + pk.qty;
+          if (restock) {
+            const prod = (appState.products || []).find(pp => pp.id === pk.productId || pp.name === pk.name);
+            if (prod) prod.stock = Number(prod.stock || 0) + pk.qty;
+          }
+        });
+
+        const isExchange = type === 'troca';
+        const refund = (!isExchange && method !== 'SEM_REEMBOLSO') ? amount : 0;
+        if (!Array.isArray(appState.returns)) appState.returns = [];
+        appState.returns.unshift({
+          id: retId, ts: now.toISOString(), date: nowStr, saleId: sale.id,
+          type: isExchange ? 'Troca' : 'Devolução', reason, note,
+          items: picks.map(pk => ({ productId: pk.productId, name: pk.name, price: pk.price, qty: pk.qty })),
+          amount, refund, method: isExchange ? '' : method, restock,
+          user: (currentUser && currentUser.name) || ''
+        });
+
+        if (isExchange) {
+          sale.exchangedAmount = round2(Number(sale.exchangedAmount || 0) + amount);
+        } else {
+          sale.returnedAmount = round2(Number(sale.returnedAmount || 0) + amount);
+          if (refund > 0) {
+            appState.transactions.unshift({
+              id: 'TX-' + Date.now().toString().slice(-6), date: nowStr, type: 'saida',
+              desc: `Devolução ${retId} (Venda ${sale.id})`, method, amount: refund
+            });
+          }
+        }
+
+        const resumo = picks.map(pk => `${pk.qty}x ${pk.name}`).join(', ');
+        logAudit(isExchange ? 'Troca' : 'Devolução',
+          `${retId} • venda ${sale.id} • ${resumo} • ${formatBRL(amount)} • ${reason}${restock ? '' : ' • sem retorno ao estoque'}`);
+
+        saveState();
+        closeReturnModal();
+        try { renderSalesReport(); } catch (e) {}
+        try { renderProductsTable(); } catch (e) {}
+        try { updateDashboardKPIs(); } catch (e) {}
+
+        if (isExchange) {
+          startExchangeInPDV(sale, amount, retId);
+        } else {
+          showToast(`Devolução ${retId} registrada: ${formatBRL(amount)}${refund > 0 ? ' saiu do caixa.' : '.'}`);
+        }
+      }
+
+      function startExchangeInPDV(sale, credit, retId) {
+        cartItems = [];
+        navigateTo('vendas');
+        const custSel = document.getElementById('pdv-customer-select');
+        if (custSel && sale.customer) {
+          if (!Array.from(custSel.options).some(o => o.value === sale.customer)) {
+            const opt = document.createElement('option');
+            opt.value = sale.customer;
+            opt.textContent = sale.customer;
+            custSel.appendChild(opt);
+          }
+          custSel.value = sale.customer;
+        }
+        const dType = document.getElementById('pdv-discount-type');
+        const dVal = document.getElementById('pdv-discount-value');
+        if (dType) dType.value = 'fixed';
+        if (dVal) dVal.value = Number(credit).toFixed(2);
+        pdvPendingExchange = { saleId: sale.id, returnId: retId, credit: Number(credit) };
+        renderPDVCart();
+        showToast(`Troca registrada. Crédito de ${formatBRL(credit)} aplicado como desconto: adicione os novos produtos.`);
+        focusPDVSearch(false);
+      }
+
+
+      /* ==================== INSTALAR COMO APLICATIVO (PWA) ==================== */
+      let deferredInstallPrompt = null;
+
+      function isRunningAsInstalledApp() {
+        try {
+          return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        } catch (e) { return false; }
+      }
+
+      function updateInstallButtons() {
+        const btn = document.getElementById('install-app-btn');
+        if (btn) btn.classList.toggle('hidden', isRunningAsInstalledApp());
+      }
+
+      function installApp() {
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          deferredInstallPrompt.userChoice.finally(() => {
+            deferredInstallPrompt = null;
+            updateInstallButtons();
+          });
+          return;
+        }
+        showToast('Para instalar: no menu do navegador (três pontinhos) escolha "Instalar aplicativo" ou "Adicionar à tela inicial". No iPhone: Compartilhar > Adicionar à Tela de Início.');
+      }
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        updateInstallButtons();
+      });
+      window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        updateInstallButtons();
+        showToast('Aplicativo instalado com sucesso!');
+      });
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', updateInstallButtons);
+      } else {
+        updateInstallButtons();
+      }
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js').catch(() => { /* sem sw.js ao lado: o sistema segue normal */ });
+        });
       }
 
       /* ==================== CUPOM NÃO FISCAL ==================== */
@@ -5422,6 +6037,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       function printSaleReceipt(saleId) {
         const sale = (appState.sales || []).find(x => x.id === saleId);
         if (!sale) return showToast('Venda não encontrada para emitir o cupom.', true);
+        logAudit('Cupom emitido', `Venda ${sale.id}`);
         const st = appState.store || {};
         const storeName = st.name || 'Loja';
         const items = Array.isArray(sale.items) ? sale.items : [];
@@ -5470,7 +6086,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
   ${lines || '<div class="c">Sem itens</div>'}
   <div class="sep"></div>
   <div class="row"><span>Subtotal</span><span>${formatBRL(subtotal)}</span></div>
-  ${discount > 0 ? `<div class="row"><span>Desconto</span><span>- ${formatBRL(discount)}</span></div>` : ''}
+  ${discount > 0 ? `<div class="row"><span>${sale.exchangeFrom ? 'Crédito de troca' : 'Desconto'}</span><span>- ${formatBRL(discount)}</span></div>` : ''}
+  ${sale.exchangeFrom ? `<div class="sm">Troca ref. venda ${escapeHtmlStr(sale.exchangeFrom)}</div>` : ''}
   <div class="row tot"><span>TOTAL</span><span>${formatBRL(total)}</span></div>
   <div class="sep"></div>
   <div class="row"><span>Pagamento</span><span>${escapeHtmlStr(sale.payment || '')}</span></div>
@@ -5485,6 +6102,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
       function closeReceiptDialog() {
         document.getElementById('receipt-dialog')?.remove();
+        if (window.innerWidth >= 1024) setTimeout(() => focusPDVSearch(false), 80);
       }
 
       function offerReceiptAfterSale(saleId) {
@@ -5492,6 +6110,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         if (!sale) return;
         if (getAutoReceipt()) {
           printSaleReceipt(saleId);
+          if (window.innerWidth >= 1024) setTimeout(() => focusPDVSearch(false), 400);
           return;
         }
         closeReceiptDialog();
@@ -5961,6 +6580,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       }
 
       function deleteSavedQuote(id) {
+        const _q = (appState.quotes || []).find(q => q.id === id);
+        if (_q) logAudit('Orçamento excluído', `${_q.id} • ${_q.customer || ''} • ${formatBRL(_q.total)}`);
         appState.quotes = (appState.quotes || []).filter(q => q.id !== id);
         saveState();
         renderQuotesTable();
@@ -5991,6 +6612,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
         const nowStr = new Date().toLocaleString('pt-BR');
         const saleId = 'VND-' + Date.now().toString().slice(-6);
+        logAudit('Orçamento aprovado', `${q.id} → venda ${saleId} • ${formatBRL(q.total)}`);
 
         (q.items || []).forEach(item => {
           const prod = appState.products.find(p => p.id === item.productId || p.name === item.name);
@@ -6113,6 +6735,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
         if (!Array.isArray(appState.costs)) appState.costs = [];
         const nowStr = new Date().toLocaleString('pt-BR');
+        logAudit(editId ? 'Despesa editada' : 'Despesa lançada', `${desc} • ${formatBRL(actual)} • ${status}`);
 
         if (editId) {
           const idx = appState.costs.findIndex(c => c.id === editId);
@@ -6221,6 +6844,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
       function deleteStoreCost(id) {
         const c = (appState.costs || []).find(item => item.id === id);
+        if (c) logAudit('Despesa excluída', `${c.desc} • ${formatBRL(c.actual)} • ${c.status}`);
         if (c && c.linkedTxId) {
           appState.transactions = appState.transactions.filter(t => t.id !== c.linkedTxId);
         }
@@ -6239,7 +6863,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
         const grossRevenue = sales.reduce((acc, s) => acc + Number(s.subtotal || s.total || 0), 0);
         const totalDiscount = sales.reduce((acc, s) => acc + Number(s.discount || 0), 0);
-        const netRevenue = sales.reduce((acc, s) => acc + Number(s.total || 0), 0);
+        const netRevenue = sales.reduce((acc, s) => acc + saleNet(s), 0);
+        const totalReturned = sales.reduce((acc, s) => acc + Number(s.returnedAmount || 0), 0);
         const paidExpensesTotal = periodExpenses.filter(c => c.status === 'Pago').reduce((acc, c) => acc + Number(c.actual || 0), 0);
         const pendingExpensesTotal = periodExpenses.filter(c => c.status !== 'Pago').reduce((acc, c) => acc + Number(c.actual || 0), 0);
         const netResult = netRevenue - paidExpensesTotal;
@@ -6250,7 +6875,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
             <div class="erp-card kpi-card p-4">
               <div class="text-[11px] font-bold uppercase text-slate-400">FATURAMENTO LÍQUIDO</div>
               <div class="text-xl font-extrabold text-sky-400 mt-1 tabular-nums">${formatBRL(netRevenue)}</div>
-              <div class="text-[10px] text-slate-500 mt-0.5">${sales.length} vendas • Desc: ${formatBRL(totalDiscount)}</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">${sales.length} vendas • Desc: ${formatBRL(totalDiscount)}${totalReturned > 0 ? ' • Devol.: ' + formatBRL(totalReturned) : ''}</div>
             </div>
             <div class="erp-card kpi-card p-4">
               <div class="text-[11px] font-bold uppercase text-slate-400">DESPESAS PAGAS (LOJA)</div>
@@ -6274,7 +6899,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         const cardsContainer = document.getElementById('report-payment-cards');
         if (cardsContainer) {
           cardsContainer.innerHTML = methods.map(m => {
-            const sum = sales.filter(s => s.payment === m).reduce((acc, s) => acc + Number(s.total || 0), 0);
+            const sum = sales.filter(s => s.payment === m).reduce((acc, s) => acc + saleNet(s), 0);
             return `
               <div class="erp-card kpi-card p-4">
                 <div class="text-[11px] font-bold uppercase text-slate-400">${m}</div>
@@ -6297,9 +6922,10 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
                   <td class="py-3 px-3 text-slate-200 font-medium">${escapeHtmlStr(s.customer)}</td>
                   <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[11px]">${escapeHtmlStr(s.payment)}</span></td>
                   <td class="py-3 px-3 text-slate-300 max-w-xs truncate" title="${escapeHtmlStr(itemsDesc)}">${escapeHtmlStr(itemsDesc)}</td>
-                  <td class="py-3 px-3 text-right font-extrabold text-emerald-400 tabular-nums">${formatBRL(s.total)}</td>
+                  <td class="py-3 px-3 text-right font-extrabold text-emerald-400 tabular-nums">${formatBRL(s.total)}${Number(s.returnedAmount || 0) > 0 ? `<div class="text-[10px] font-semibold text-amber-300">- ${formatBRL(s.returnedAmount)} devolvido</div>` : ''}${Number(s.exchangedAmount || 0) > 0 ? `<div class="text-[10px] font-semibold text-violet-300">troca ${formatBRL(s.exchangedAmount)}</div>` : ''}${s.exchangeFrom ? `<div class="text-[10px] font-semibold text-violet-300">troca ref. ${escapeHtmlStr(s.exchangeFrom)}</div>` : ''}</td>
                   <td class="py-3 px-3 text-right space-x-1 whitespace-nowrap">
                     <button type="button" onclick="printSaleReceipt('${escapeHtmlStr(s.id)}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold">Cupom</button>
+                    <button type="button" onclick="openReturnModal('${escapeHtmlStr(s.id)}')" class="px-2.5 py-1 rounded-lg bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 font-bold">Devolução/Troca</button>
                     <button type="button" onclick="openEditSaleModal('${escapeHtmlStr(s.id)}')" class="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 font-bold">Editar Qtd/Itens</button>
                     <button type="button" onclick="deleteSaleRecord('${escapeHtmlStr(s.id)}')" class="px-2 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 font-semibold">Excluir</button>
                   </td>
@@ -6335,6 +6961,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       function openEditSaleModal(saleId) {
         const sale = (appState.sales || []).find(s => s.id === saleId);
         if (!sale) return;
+        if (saleHasReturns(sale)) return showToast('Esta venda tem devolução/troca registrada e não pode mais ser editada.', true);
 
         editingSaleDraft = {
           id: sale.id,
@@ -6486,6 +7113,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
           appState.transactions[txIdx].amount = newTotal;
         }
 
+        logAudit('Venda editada', `${oldSale.id} • ${formatBRL(oldSale.total)} → ${formatBRL(newTotal)}`);
         editingSaleDraft = null;
         saveState();
         closeModal('modal-edit-sale');
@@ -6498,6 +7126,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       function deleteSaleRecord(saleId) {
         const sale = (appState.sales || []).find(s => s.id === saleId);
         if (!sale) return;
+        if (saleHasReturns(sale)) return showToast('Esta venda tem devolução/troca registrada e não pode ser excluída.', true);
+        logAudit('Venda excluída', `${sale.id} • ${sale.customer || ''} • ${sale.payment || ''} • ${formatBRL(sale.total)}`);
 
         (sale.items || []).forEach(it => {
           const prod = (appState.products || []).find(p => p.id === it.productId || p.name === it.name);
@@ -6531,9 +7161,9 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         const methods = ['Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro', 'A prazo'];
         const totalsByMethod = methods.map(m => ({
           name: m,
-          total: sales.filter(s => s.payment === m).reduce((acc, s) => acc + Number(s.total || 0), 0)
+          total: sales.filter(s => s.payment === m).reduce((acc, s) => acc + saleNet(s), 0)
         }));
-        const totalRevenue = sales.reduce((acc, s) => acc + Number(s.total || 0), 0);
+        const totalRevenue = sales.reduce((acc, s) => acc + saleNet(s), 0);
         const totalDiscount = sales.reduce((acc, s) => acc + Number(s.discount || 0), 0);
         const totalPaidExpenses = periodExpenses.filter(c => c.status === 'Pago').reduce((acc, c) => acc + Number(c.actual || 0), 0);
         const operationalNetResult = totalRevenue - totalPaidExpenses;
@@ -7034,7 +7664,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
         if (q.includes('faturamento') || q.includes('caixa') || q.includes('resumo') || q.includes('financeiro') || q.includes('despesa')) {
           const { balance } = computeFinancialSummary();
-          const rev = appState.sales.reduce((acc, s) => acc + Number(s.total || 0), 0);
+          const rev = appState.sales.reduce((acc, s) => acc + saleNet(s), 0);
           const openQuotes = (appState.quotes || []).filter(o => o.status !== 'Aprovado').length;
           const paidCosts = (appState.costs || []).filter(c => c.status === 'Pago').reduce((acc, c) => acc + Number(c.actual || 0), 0);
           return appendAssistenteBubble(
@@ -7115,6 +7745,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         const phone = document.getElementById('entity-phone').value.trim();
         if (!name) return;
 
+        logAudit('Cadastro de ' + (type || 'cliente').toLowerCase(), name);
         appState.entities.push({ id: 'ENT-' + Date.now().toString().slice(-5), type, name, doc, phone });
         document.getElementById('entity-name').value = '';
         document.getElementById('entity-doc').value = '';
@@ -7126,6 +7757,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       }
 
       function deleteEntity(id) {
+        const _en = appState.entities.find(e => e.id === id);
+        if (_en) logAudit('Cadastro excluído', `${_en.type}: ${_en.name}`);
         appState.entities = appState.entities.filter(e => e.id !== id);
         saveState();
         renderEntitiesTable();
@@ -8011,6 +8644,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         const order = (appState.catalogOrders || []).find(o => o.id === orderId);
         if (!order) return;
         order.status = 'Separado';
+        logAudit('Pedido do catálogo separado', `${orderId} • ${order.customer || ''}`);
         setCatalogOrderHandled(orderId, 'Separado');
         if (supabaseClient) {
           try {
@@ -8032,6 +8666,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
         const nowStr = new Date().toLocaleString('pt-BR');
         const saleId = 'VND-' + Date.now().toString().slice(-6);
+        logAudit('Pedido do catálogo faturado', `${orderId} → venda ${saleId} • ${formatBRL(order.total)}`);
 
         (order.items || []).forEach(it => {
           const prod = (appState.products || []).find(p => p.id === it.productId || p.name === it.name);
@@ -8089,6 +8724,8 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
       }
 
       async function deleteCatalogOrder(orderId) {
+        const _co = (appState.catalogOrders || []).find(o => o.id === orderId);
+        if (_co) logAudit('Pedido do catálogo excluído', `${orderId} • ${_co.customer || ''} • ${formatBRL(_co.total)}`);
         appState.catalogOrders = (appState.catalogOrders || []).filter(o => o.id !== orderId);
         setCatalogOrderHandled(orderId, 'Excluído');
         if (supabaseClient) {
@@ -8392,6 +9029,14 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         toggleWhatsAppWidget,
         waLauncherClick,
         printSaleReceipt,
+        renderAuditLog,
+        onPDVSearchKeydown,
+        openReturnModal,
+        closeReturnModal,
+        confirmReturn,
+        updateReturnSummary,
+        onReturnReasonChange,
+        installApp,
         closeReceiptDialog,
         setAutoReceipt,
         switchWhatsAppWidgetTab,
