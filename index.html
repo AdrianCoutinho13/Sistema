@@ -794,6 +794,17 @@
   </div>
 
   <!-- ==================== HEADER SUPERIOR EXECUTIVO ==================== -->
+  <div id="notice-panel" class="hidden fixed z-[85] erp-card shadow-2xl overflow-hidden" style="width: 390px; max-width: calc(100vw - 16px);">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+      <div>
+        <h3 class="text-sm font-extrabold text-white">Novidades e avisos</h3>
+        <p class="text-[10px] text-slate-500">O que mudou no sistema e recados importantes</p>
+      </div>
+      <button type="button" onclick="markAllNoticesRead(true)" class="text-[11px] font-semibold text-sky-400 hover:underline">Marcar todas como lidas</button>
+    </div>
+    <div id="notice-list" class="max-h-[65vh] overflow-y-auto divide-y divide-slate-800/80"></div>
+  </div>
+
   <header class="erp-header sticky top-0 z-50 px-4 lg:px-7 h-16 flex items-center justify-between gap-4">
     <div class="flex items-center gap-3 min-w-0">
       <button onclick="toggleMobileSidebar()" aria-label="Abrir menu" class="lg:hidden p-2 rounded-xl erp-pill">
@@ -821,6 +832,11 @@
     </div>
 
     <div class="flex items-center gap-2 sm:gap-2.5">
+      <button id="notice-bell-btn" type="button" onclick="toggleNoticePanel()" title="Novidades e avisos" aria-label="Novidades e avisos" class="relative p-2 rounded-xl erp-pill">
+        <svg class="w-4 h-4" style="color: var(--accent-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <span id="notice-badge" class="keep-white absolute -top-1.5 -right-1.5 min-w-[17px] h-[17px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold items-center justify-center" style="display:none;">0</span>
+      </button>
+
       <button onclick="pingSupabaseNow()" title="Clique para sincronizar com Supabase" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl erp-pill text-xs font-medium">
         <span id="header-db-dot" class="inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
         <span id="header-db-text">Nuvem Blindada</span>
@@ -1974,6 +1990,29 @@
               <span>Atualizar Lojas</span>
             </button>
           </div>
+        </div>
+
+        <div class="erp-card p-5 space-y-3">
+          <div>
+            <h3 class="text-sm font-extrabold text-white">Avisos e novidades para as lojas</h3>
+            <p class="text-[11px] text-slate-400">Publique um recado que aparece no sininho de todas as lojas clientes.</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-2.5">
+            <input type="text" id="notice-new-title" maxlength="80" placeholder="Título (ex.: Nova função: devolução e troca)" class="erp-input md:col-span-2 px-3 py-2 text-xs" />
+            <select id="notice-new-level" class="erp-input px-3 py-2 text-xs">
+              <option value="novidade">Novidade</option>
+              <option value="aviso">Aviso</option>
+              <option value="importante">Importante</option>
+            </select>
+            <select id="notice-new-audience" class="erp-input px-3 py-2 text-xs">
+              <option value="gestao">Gestores e Master</option>
+              <option value="todos">Todos os usuários</option>
+            </select>
+            <textarea id="notice-new-body" rows="3" maxlength="600" placeholder="Mensagem para as lojas..." class="erp-input md:col-span-4 px-3 py-2 text-xs"></textarea>
+            <input type="password" id="notice-new-key" autocomplete="off" placeholder="Chave de publicação" class="erp-input md:col-span-3 px-3 py-2 text-xs" />
+            <button type="button" onclick="publishPlatformNotice()" class="btn-accent px-4 py-2 text-xs font-bold">Publicar aviso</button>
+          </div>
+          <div id="notice-admin-list" class="divide-y divide-slate-800/80 text-xs"></div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -4061,6 +4100,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
 
         if (!currentUser) return;
         try { updateDashboardKPIs(); } catch (e) { /* painel será atualizado na próxima sincronização */ }
+        setTimeout(() => { try { initNotices(); } catch (e) {} }, 1200);
         const initials = (currentUser.name || 'AD').substring(0, 2).toUpperCase();
         document.getElementById('header-user-initials').textContent = initials;
         document.getElementById('header-user-name').textContent = currentUser.name;
@@ -4341,7 +4381,7 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         if (viewId === 'orcamentos') { populateQuoteFormOptions(); renderQuoteDraftItems(); renderQuotesTable(); }
         if (viewId === 'custos') renderCostsTable();
         if (viewId === 'entidades') renderEntitiesTable();
-        if (viewId === 'saas_lojas') syncSaasTenantsFromSupabase();
+        if (viewId === 'saas_lojas') { syncSaasTenantsFromSupabase(); fetchPlatformNotices(); renderPlatformNoticeAdmin(); }
         if (viewId === 'equipe') syncTeamFromSupabase();
         if (viewId === 'historico') renderAuditLog();
         if (viewId === 'vendas' && window.innerWidth >= 1024) setTimeout(() => focusPDVSearch(false), 60);
@@ -6001,6 +6041,225 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('sw.js').catch(() => { /* sem sw.js ao lado: o sistema segue normal */ });
         });
+      }
+
+
+      /* ==================== NOVIDADES E AVISOS (sininho) ==================== */
+      /* Novidades da versão: para avisar as lojas de algo novo, acrescente um item aqui (mais recente primeiro).
+         Avisos avulsos podem ser publicados sem mexer no código, em Gestão SaaS > "Avisos e novidades para as lojas". */
+      const RELEASE_NOTES = [
+        {
+          id: 'rel-2026-11-26', ts: '2026-11-26T12:00:00.000Z', level: 'novidade', audience: 'gestao',
+          title: 'Novidades do sistema',
+          body: [
+            '• Painel "Hoje na loja": vendas do dia e avisos de estoque, contas e pedidos.',
+            '• PDV mais rápido: bipe o código e o item entra no carrinho. Use 3*código para várias unidades, F2 para finalizar, F4 para buscar e F8 para limpar.',
+            '• Cupom não fiscal ao finalizar a venda e reimpressão na lista de vendas.',
+            '• Devolução e troca de produtos, pelo botão na lista de vendas.',
+            '• Histórico de atividades: quem fez o quê (somente Master Admin).',
+            '• Instalar o sistema como aplicativo, pelo menu do seu perfil.',
+            '• Cinco layouts visuais em Aparência e troca de senha pelo menu do perfil.'
+          ].join('\n')
+        }
+      ];
+
+      let platformNotices = [];
+      let noticesLoaded = false;
+      let noticesInitKey = '';
+      let lastNoticeFetchAt = 0;
+
+      function noticeReadKey() {
+        return 'erp_notice_read_' + ((currentUser && (currentUser.id || currentUser.name)) || 'anon');
+      }
+      function getReadNoticeIds() {
+        try { return new Set(JSON.parse(localStorage.getItem(noticeReadKey()) || '[]')); } catch (e) { return new Set(); }
+      }
+      function saveReadNoticeIds(set) {
+        try { localStorage.setItem(noticeReadKey(), JSON.stringify(Array.from(set).slice(-300))); } catch (e) {}
+      }
+      function getVisibleNotices() {
+        const manager = isManagerOrMaster();
+        return [].concat(platformNotices, RELEASE_NOTES)
+          .filter(n => n.audience === 'todos' || (n.audience === 'gestao' && manager))
+          .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+      }
+      function unreadNoticeCount() {
+        const read = getReadNoticeIds();
+        return getVisibleNotices().filter(n => !read.has(n.id)).length;
+      }
+      function updateNoticeBadge() {
+        const badge = document.getElementById('notice-badge');
+        if (!badge) return;
+        const n = currentUser ? unreadNoticeCount() : 0;
+        badge.style.display = n > 0 ? 'flex' : 'none';
+        badge.textContent = n > 9 ? '9+' : String(n);
+      }
+      function noticeLevelClass(level) {
+        if (level === 'importante') return 'bg-red-500/15 text-red-400';
+        if (level === 'aviso') return 'bg-amber-500/15 text-amber-300';
+        return 'bg-sky-500/15 text-sky-300';
+      }
+      function noticeLevelLabel(level) {
+        return level === 'importante' ? 'Importante' : (level === 'aviso' ? 'Aviso' : 'Novidade');
+      }
+
+      function renderNoticePanel() {
+        const list = document.getElementById('notice-list');
+        if (!list) return;
+        const read = getReadNoticeIds();
+        const items = getVisibleNotices();
+        list.innerHTML = items.length
+          ? items.map(n => {
+            const unread = !read.has(n.id);
+            const when = n.ts ? new Date(n.ts).toLocaleDateString('pt-BR') : '';
+            return `
+              <div class="px-4 py-3 ${unread ? 'bg-sky-500/5' : ''}">
+                <div class="flex items-center gap-2">
+                  ${unread ? '<span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>' : ''}
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${noticeLevelClass(n.level)}">${noticeLevelLabel(n.level)}</span>
+                  <span class="text-[10px] text-slate-500 ml-auto">${escapeHtmlStr(when)}</span>
+                </div>
+                <div class="text-xs font-bold text-white mt-1.5">${escapeHtmlStr(n.title)}</div>
+                <div class="text-[11px] text-slate-300 mt-1 leading-relaxed" style="white-space: pre-line;">${escapeHtmlStr(n.body)}</div>
+              </div>`;
+          }).join('')
+          : '<p class="px-4 py-8 text-center text-xs text-slate-500">Nenhuma novidade por enquanto.</p>';
+      }
+
+      function markAllNoticesRead(rerender) {
+        const read = getReadNoticeIds();
+        getVisibleNotices().forEach(n => read.add(n.id));
+        saveReadNoticeIds(read);
+        updateNoticeBadge();
+        if (rerender) renderNoticePanel();
+      }
+
+      function closeNoticePanel() {
+        const panel = document.getElementById('notice-panel');
+        if (!panel || panel.classList.contains('hidden')) return;
+        panel.classList.add('hidden');
+        markAllNoticesRead(false);
+      }
+
+      function toggleNoticePanel() {
+        const panel = document.getElementById('notice-panel');
+        const bell = document.getElementById('notice-bell-btn');
+        if (!panel || !bell) return;
+        if (!panel.classList.contains('hidden')) { closeNoticePanel(); return; }
+        renderNoticePanel();
+        panel.classList.remove('hidden');
+        const r = bell.getBoundingClientRect();
+        const w = Math.min(390, window.innerWidth - 16);
+        panel.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)) + 'px';
+        panel.style.top = (r.bottom + 10) + 'px';
+        fetchPlatformNotices();
+      }
+
+      document.addEventListener('click', (e) => {
+        const panel = document.getElementById('notice-panel');
+        if (!panel || panel.classList.contains('hidden')) return;
+        if (panel.contains(e.target) || document.getElementById('notice-bell-btn')?.contains(e.target)) return;
+        closeNoticePanel();
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNoticePanel(); });
+
+      async function fetchPlatformNotices() {
+        if (!supabaseClient || !currentUser) return;
+        lastNoticeFetchAt = Date.now();
+        try {
+          const { data, error } = await supabaseClient.rpc('list_platform_notices');
+          if (error || !Array.isArray(data)) return;
+          const before = new Set(platformNotices.map(n => n.id));
+          platformNotices = data.map(r => ({
+            id: 'pl-' + r.r_id, rawId: r.r_id, ts: r.r_created, level: r.r_level || 'novidade',
+            audience: r.r_audience || 'gestao', title: r.r_title || '', body: r.r_body || ''
+          }));
+          const read = getReadNoticeIds();
+          const fresh = noticesLoaded
+            ? getVisibleNotices().filter(n => n.id.startsWith('pl-') && !before.has(n.id) && !read.has(n.id))
+            : [];
+          noticesLoaded = true;
+          updateNoticeBadge();
+          if (!document.getElementById('notice-panel')?.classList.contains('hidden')) renderNoticePanel();
+          renderPlatformNoticeAdmin();
+          if (fresh.length) showToast('🔔 Novo aviso: ' + fresh[0].title);
+        } catch (e) { /* sem a função no banco: o sininho segue só com as novidades da versão */ }
+      }
+
+      async function initNotices() {
+        if (!currentUser) return;
+        const key = noticeReadKey();
+        updateNoticeBadge();
+        if (noticesInitKey === key) return;
+        noticesInitKey = key;
+        await fetchPlatformNotices();
+        updateNoticeBadge();
+        const unread = unreadNoticeCount();
+        if (unread > 0) showToast(`🔔 Você tem ${unread} novidade(s)/aviso(s) para ver. Toque no sino.`);
+      }
+
+      setInterval(() => { if (currentUser) fetchPlatformNotices(); }, 300000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && currentUser && Date.now() - lastNoticeFetchAt > 60000) fetchPlatformNotices();
+      });
+
+      /* ----- publicação de avisos (Super Admin) ----- */
+      function renderPlatformNoticeAdmin() {
+        const box = document.getElementById('notice-admin-list');
+        if (!box) return;
+        box.innerHTML = platformNotices.length
+          ? platformNotices.map(n => `
+            <div class="py-2.5 flex items-start gap-3">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${noticeLevelClass(n.level)}">${noticeLevelLabel(n.level)}</span>
+              <div class="min-w-0 flex-1">
+                <div class="font-bold text-white">${escapeHtmlStr(n.title)} <span class="text-[10px] font-normal text-slate-500">• ${n.audience === 'todos' ? 'todos' : 'gestores'} • ${n.ts ? new Date(n.ts).toLocaleDateString('pt-BR') : ''}</span></div>
+                <div class="text-slate-400 truncate">${escapeHtmlStr(n.body)}</div>
+              </div>
+              <button type="button" onclick="removePlatformNotice('${escapeHtmlStr(n.rawId)}')" class="px-2 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-300 font-bold shrink-0">Remover</button>
+            </div>`).join('')
+          : '<p class="py-3 text-slate-500">Nenhum aviso publicado.</p>';
+      }
+
+      async function publishPlatformNotice() {
+        if (!canManageSaasPlatform()) return showToast('Apenas o Super Admin pode publicar avisos.', true);
+        if (!supabaseClient) return showToast('Sem conexão com o banco de dados.', true);
+        const title = (document.getElementById('notice-new-title')?.value || '').trim();
+        const body = (document.getElementById('notice-new-body')?.value || '').trim();
+        const level = document.getElementById('notice-new-level')?.value || 'novidade';
+        const audience = document.getElementById('notice-new-audience')?.value || 'gestao';
+        const key = document.getElementById('notice-new-key')?.value || '';
+        if (title.length < 3 || body.length < 3) return showToast('Preencha o título e a mensagem do aviso.', true);
+        if (!key) return showToast('Digite a chave de publicação.', true);
+        try {
+          const { error } = await supabaseClient.rpc('publish_platform_notice', {
+            p_key: key, p_title: title, p_body: body, p_level: level, p_audience: audience
+          });
+          if (error) throw new Error(error.message || 'Falha ao publicar.');
+          document.getElementById('notice-new-title').value = '';
+          document.getElementById('notice-new-body').value = '';
+          logAudit('Aviso publicado', `${title} • ${audience === 'todos' ? 'todos os usuários' : 'gestores'}`);
+          saveState(true);
+          showToast('Aviso publicado para as lojas!');
+          await fetchPlatformNotices();
+        } catch (err) {
+          showToast('Não foi possível publicar: ' + (err.message || 'erro'), true);
+        }
+      }
+
+      async function removePlatformNotice(rawId) {
+        if (!canManageSaasPlatform() || !supabaseClient) return;
+        const key = document.getElementById('notice-new-key')?.value || '';
+        if (!key) return showToast('Digite a chave de publicação para remover um aviso.', true);
+        try {
+          const { error } = await supabaseClient.rpc('remove_platform_notice', { p_key: key, p_id: rawId });
+          if (error) throw new Error(error.message || 'Falha ao remover.');
+          logAudit('Aviso removido', rawId);
+          saveState(true);
+          showToast('Aviso removido.');
+          await fetchPlatformNotices();
+        } catch (err) {
+          showToast('Não foi possível remover: ' + (err.message || 'erro'), true);
+        }
       }
 
       /* ==================== CUPOM NÃO FISCAL ==================== */
@@ -9029,6 +9288,10 @@ GRANT ALL ON TABLE public.erp_public_orders TO anon, authenticated;`;
         toggleWhatsAppWidget,
         waLauncherClick,
         printSaleReceipt,
+        toggleNoticePanel,
+        markAllNoticesRead,
+        publishPlatformNotice,
+        removePlatformNotice,
         renderAuditLog,
         onPDVSearchKeydown,
         openReturnModal,
